@@ -1,12 +1,27 @@
+/**
+ * DomainGate - Enterprise Protected Route Navigator
+ * 
+ * Route Protection Implementation:
+ * 1. Unauthenticated users can only access the Login page.
+ * 2. Authenticated and authorized users (@hbplus.fit) access the Dashboard.
+ * 3. Unauthorized users are blocked from protected screens and routed to quarantine/login.
+ * 4. Direct URL access to /dashboard is blocked at the router level via conditional definition.
+ * 5. Authentication state is preserved after browser reloads.
+ * 6. Access is strictly blocked while authentication is initializing (flicker-free).
+ * 7. Defense-in-depth: Paired with Firestore & Storage rules so client navigation guards
+ *    are never the sole security boundary.
+ */
+
 import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { AccessDeniedScreen } from '../screens/AccessDeniedScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -15,6 +30,25 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/**
+ * Universal Deep Linking Configuration for Web & Mobile
+ */
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [
+    'domaingate://',
+    'https://domaingate.netlify.app',
+    'http://localhost:8081',
+    'http://localhost:19006',
+  ],
+  config: {
+    screens: {
+      Login: 'login',
+      Dashboard: 'dashboard',
+      AccessDenied: 'access-denied',
+    },
+  },
+};
 
 /**
  * High-polish initialization splash screen preventing state flicker during session restore
@@ -33,15 +67,15 @@ function AppInitializationGate() {
 }
 
 export const RootNavigator: React.FC = () => {
-  const { state, isInitializing } = useAuth();
+  const { isAuthorized, state, isInitializing } = useAuth();
 
-  // Prevent authentication state flicker while onAuthStateChanged reads cached credentials
+  // 1. Prevent access while authentication is still initializing
   if (isInitializing) {
     return <AppInitializationGate />;
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -49,11 +83,21 @@ export const RootNavigator: React.FC = () => {
           contentStyle: { backgroundColor: '#030712' },
         }}
       >
-        {state === 'AUTHORIZED' ? (
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        {isAuthorized ? (
+          // Authenticated and authorized: Dashboard screen is mounted
+          <Stack.Screen name="Dashboard">
+            {() => (
+              <ProtectedRoute>
+                <DashboardScreen />
+              </ProtectedRoute>
+            )}
+          </Stack.Screen>
         ) : state === 'ACCESS_DENIED' ? (
+          // Unauthorized domain attempt: Quarantined screen
           <Stack.Screen name="AccessDenied" component={AccessDeniedScreen} />
         ) : (
+          // Unauthenticated / Default: Only Login is in the routing hierarchy.
+          // Direct URL access to /dashboard automatically falls back to Login.
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
