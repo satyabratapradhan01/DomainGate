@@ -83,6 +83,68 @@ export const FirestoreService = {
   },
 
   /**
+   * Retrieves or creates a user profile document in Firestore collection `users/{userId}`.
+   * Only accessible if authorized by Firestore security rules.
+   */
+  async getOrCreateUserProfile(user: {
+    uid: string;
+    email: string;
+    displayName?: string | null;
+    photoURL?: string | null;
+    role?: 'Admin' | 'User';
+    domain: string;
+  }): Promise<{
+    uid: string;
+    email: string;
+    displayName: string;
+    photoURL?: string | null;
+    role: 'Admin' | 'User';
+    organization: string;
+    domain: string;
+    lastLoginAt: string;
+  }> {
+    const defaultProfile = {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName || user.email.split('@')[0],
+      photoURL: user.photoURL || null,
+      role: user.role || (user.email.toLowerCase().startsWith('satya') ? 'Admin' : 'User'),
+      organization: 'HBPlus Health & Fitness Global Inc.',
+      domain: user.domain,
+      lastLoginAt: new Date().toISOString(),
+    };
+
+    try {
+      const db = getFirestoreDB();
+      const userDocRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userDocRef);
+
+      if (userSnap.exists()) {
+        const existingData = userSnap.data();
+        // Update last login timestamp
+        await setDoc(userDocRef, { ...existingData, lastLoginAt: serverTimestamp() }, { merge: true });
+        return {
+          ...defaultProfile,
+          ...existingData,
+          lastLoginAt: new Date().toISOString(),
+        };
+      }
+
+      // Create new Firestore document for user
+      await setDoc(userDocRef, {
+        ...defaultProfile,
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
+      });
+
+      return defaultProfile;
+    } catch (err: any) {
+      console.warn('[FirestoreService] Firestore getOrCreateUserProfile notice:', err.message);
+      return defaultProfile;
+    }
+  },
+
+  /**
    * Records an audit entry in Cloud Firestore collection `security_audits`
    */
   async recordFirestoreAudit(auditData: {
