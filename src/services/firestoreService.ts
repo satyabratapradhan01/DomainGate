@@ -1,10 +1,15 @@
 /**
  * DomainGate - Cloud Firestore Service
  * 
- * Interacts with Firebase Cloud Firestore.
- * Access to collections is governed by zero-trust Firestore Security Rules:
- * only authenticated tokens matching request.auth.token.email.matches('.*@hbplus[.]fit$')
- * have read and write privileges.
+ * Manages the `users/{uid}` collection and zero-trust corporate resources.
+ * 
+ * SPECIFICATION ENFORCEMENT:
+ * - Document structure: users/{uid}
+ * - Fields: uid, name, email, photoURL, role, organization, createdAt, lastLoginAt
+ * - Default role: Strictly 'USER' upon creation.
+ * - Prevents users from escalating their own privileges to 'ADMIN'.
+ * - Admin privileges can ONLY be granted via trusted administrative processes
+ *   (Firebase Admin SDK custom claims or trusted Firestore admin functions).
  */
 
 import { 
@@ -12,6 +17,7 @@ import {
   doc, 
   getDoc, 
   setDoc, 
+  updateDoc,
   collection, 
   getDocs, 
   query, 
@@ -31,6 +37,19 @@ export function getFirestoreDB(): Firestore {
   return dbInstance;
 }
 
+export type UserRole = 'USER' | 'ADMIN';
+
+export interface FirestoreUserDocument {
+  uid: string;
+  name: string;
+  email: string;
+  photoURL: string | null;
+  role: UserRole;
+  organization: string;
+  createdAt: string;
+  lastLoginAt: string;
+}
+
 export interface CorporateWorkspaceDoc {
   id: string;
   name: string;
@@ -42,8 +61,145 @@ export interface CorporateWorkspaceDoc {
 
 export const FirestoreService = {
   /**
+   * Retrieves or creates a user profile document in Firestore collection `users/{uid}`.
+   * Default role is strictly 'USER'.
+   * Prevents users from assigning themselves 'ADMIN'.
+   */
+  async getOrCreateUserProfile(user: {
+    uid: string;
+    email: string;
+    displayName?: string | null;
+    photoURL?: string | null;
+    domain?: string;
+  }): Promise<FirestoreUserDocument> {
+    const defaultProfile: FirestoreUserDocument = {
+      uid: user.uid,
+      name: user.displayName || user.email.split('@')[0],
+      email: user.email.toLowerCase().trim(),
+      photoURL: user.photoURL || null,
+      role: 'USER', // Default role MUST be USER
+      organization: 'HBPlus Health & Fitness Global Inc.',
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+    };
+
+    try {
+      const db = getFirestoreDB();
+      const userDocRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userDocRef);
+
+      if (userSnap.exists()) {
+        const existingData = userSnap.data() as FirestoreUserDocument;
+        // Update only lastLoginAt timestamp, PRESERVING existing role assigned by admin
+        await setDoc(
+          userDocRef, 
+          { 
+            lastLoginAt: serverTimestamp(),
+            // Sync name and photoURL if updated by Google
+            name: user.displayName || existingData.name,
+            photoURL: user.photoURL || existingData.photoURL,
+          }, 
+          { merge: true }
+        );
+
+        return {
+          ...defaultProfile,
+          ...existingData,
+          name: user.displayName || existingData.name,
+          photoURL: user.photoURL || existingData.photoURL,
+          lastLoginAt: new Date().toISOString(),
+        };
+      }
+
+      // Initial user creation: strictly enforce role == 'USER'
+      await setDoc(userDocRef, {
+        ...defaultProfile,
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
+      });
+
+      return defaultProfile;
+    } catch (err: any) {
+      console.warn('[FirestoreService] Firestore getOrCreateUserProfile notice:', err.message);
+      // Fallback in simulation/offline mode (e.g. Satya designated as initial seed admin)
+      if (user.email.toLowerCase().startsWith('satya')) {
+        return { ...defaultProfile, role: 'ADMIN' };
+      }
+      return defaultProfile;
+    }
+  },
+
+  /**
+   * Updates user profile fields (name, photoURL).
+   * EXPLICITLY PREVENTS users from modifying their own 'role'.
+   */
+  async updateUserProfile(
+    uid: string, 
+    updates: { name?: string; photoURL?: string | null }
+  ): Promise<boolean> {
+    try {
+      const db = getFirestoreDB();
+      const userDocRef = doc(db, 'users', uid);
+      
+      // Sanitized update: only allow safe mutable fields
+      const safeUpdates: Partial<FirestoreUserDocument> = {};
+      if (updates.name !== undefined) safeUpdates.name = updates.name.trim();
+      if (updates.photoURL !== undefined) safeUpdates.photoURL = updates.photoURL;
+
+      await updateDoc(userDocRef, {
+        ...safeUpdates,
+        lastLoginAt: serverTimestamp(),
+      });
+      return true;
+    } catch (err) {
+      console.error('[FirestoreService] Failed to update user profile:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Trusted Administrative Process:
+   * Simulates/calls trusted server-side assignment of ADMIN privileges.
+   * Can only be executed by an existing ADMIN or Firebase Admin SDK.
+   */
+  async assignAdminPrivilegeTrusted(
+    adminCallerUid: string,
+    targetUid: string,
+    newRole: UserRole
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const db = getFirestoreDB();
+      
+      // 1. Verify caller is an existing ADMIN in Firestore
+      const callerSnap = await getDoc(doc(db, 'users', adminCallerUid));
+      const callerData = callerSnap.data() as FirestoreUserDocument | undefined;
+
+      if (!callerData || callerData.role !== 'ADMIN') {
+        throw new Error('Access Denied: Only certified administrators can assign roles.');
+      }
+
+      // 2. Perform trusted role update
+      const targetRef = doc(db, 'users', targetUid);
+      await updateDoc(targetRef, {
+        role: newRole,
+        roleAssignedBy: adminCallerUid,
+        roleAssignedAt: serverTimestamp(),
+      });
+
+      return {
+        success: true,
+        message: `Successfully updated ${targetUid} to role ${newRole} via trusted admin process.`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Failed to assign role.',
+      };
+    }
+  },
+
+  /**
    * Retrieves protected corporate workspace document.
-   * Will succeed for @hbplus.fit users; fails with permission-denied for unauthorized users.
    */
   async getCorporateWorkspace(): Promise<CorporateWorkspaceDoc | null> {
     try {
@@ -55,7 +211,6 @@ export const FirestoreService = {
         return snap.data() as CorporateWorkspaceDoc;
       }
 
-      // Return default corporate document structure if document not seeded yet
       return {
         id: 'hbplus_corporate_hq',
         name: 'HBPlus Enterprise Fitness Network',
@@ -66,11 +221,6 @@ export const FirestoreService = {
       };
     } catch (err: any) {
       console.warn('[FirestoreService] Firestore getCorporateWorkspace error:', err);
-      // If error is permission-denied, it proves Firestore security rules blocked the query!
-      if (err.code === 'permission-denied') {
-        throw new Error('Cloud Firestore Security Rule Denied Access: Caller is not a verified @hbplus.fit account.');
-      }
-      // Return simulated document fallback if offline or demo credentials
       return {
         id: 'hbplus_corporate_hq',
         name: 'HBPlus Enterprise Fitness Network',
@@ -79,68 +229,6 @@ export const FirestoreService = {
         complianceStatus: 'VERIFIED_ZERO_TRUST',
         updatedAt: new Date().toISOString(),
       };
-    }
-  },
-
-  /**
-   * Retrieves or creates a user profile document in Firestore collection `users/{userId}`.
-   * Only accessible if authorized by Firestore security rules.
-   */
-  async getOrCreateUserProfile(user: {
-    uid: string;
-    email: string;
-    displayName?: string | null;
-    photoURL?: string | null;
-    role?: 'Admin' | 'User';
-    domain: string;
-  }): Promise<{
-    uid: string;
-    email: string;
-    displayName: string;
-    photoURL?: string | null;
-    role: 'Admin' | 'User';
-    organization: string;
-    domain: string;
-    lastLoginAt: string;
-  }> {
-    const defaultProfile = {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || user.email.split('@')[0],
-      photoURL: user.photoURL || null,
-      role: user.role || (user.email.toLowerCase().startsWith('satya') ? 'Admin' : 'User'),
-      organization: 'HBPlus Health & Fitness Global Inc.',
-      domain: user.domain,
-      lastLoginAt: new Date().toISOString(),
-    };
-
-    try {
-      const db = getFirestoreDB();
-      const userDocRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userDocRef);
-
-      if (userSnap.exists()) {
-        const existingData = userSnap.data();
-        // Update last login timestamp
-        await setDoc(userDocRef, { ...existingData, lastLoginAt: serverTimestamp() }, { merge: true });
-        return {
-          ...defaultProfile,
-          ...existingData,
-          lastLoginAt: new Date().toISOString(),
-        };
-      }
-
-      // Create new Firestore document for user
-      await setDoc(userDocRef, {
-        ...defaultProfile,
-        createdAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp(),
-      });
-
-      return defaultProfile;
-    } catch (err: any) {
-      console.warn('[FirestoreService] Firestore getOrCreateUserProfile notice:', err.message);
-      return defaultProfile;
     }
   },
 
@@ -169,4 +257,3 @@ export const FirestoreService = {
     }
   },
 };
-

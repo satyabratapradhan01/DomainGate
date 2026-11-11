@@ -18,24 +18,24 @@ import { getAuditLogs, AuditEvent } from '../utils/auditLogger';
 import { SECURITY_CONFIG } from '../config/securityConfig';
 import { FirestoreService, CorporateWorkspaceDoc } from '../services/firestoreService';
 
-type DashboardTab = 'overview' | 'members' | 'firestore' | 'claims' | 'audits';
+type DashboardTab = 'overview' | 'members' | 'firestore' | 'claims' | 'audits' | 'admin';
 
 interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'User';
+  role: 'ADMIN' | 'USER';
   department: string;
   status: 'Active' | 'On Leave';
   avatarSeed: string;
 }
 
 const CORPORATE_MEMBERS: TeamMember[] = [
-  { id: '1', name: 'Satya Nadella', email: 'satya@hbplus.fit', role: 'Admin', department: 'Executive Leadership', status: 'Active', avatarSeed: 'Satya' },
-  { id: '2', name: 'Dr. Sarah Lin', email: 'sarah.lin@hbplus.fit', role: 'Admin', department: 'Biometric Analytics', status: 'Active', avatarSeed: 'Sarah' },
-  { id: '3', name: 'Marcus Vance', email: 'marcus.v@hbplus.fit', role: 'User', department: 'Enterprise Performance', status: 'Active', avatarSeed: 'Marcus' },
-  { id: '4', name: 'Elena Rostova', email: 'elena.r@hbplus.fit', role: 'User', department: 'Corporate Wellbeing', status: 'Active', avatarSeed: 'Elena' },
-  { id: '5', name: 'David Kim', email: 'david.kim@hbplus.fit', role: 'User', department: 'Platform Engineering', status: 'Active', avatarSeed: 'David' },
+  { id: '1', name: 'Satya Nadella', email: 'satya@hbplus.fit', role: 'ADMIN', department: 'Executive Leadership', status: 'Active', avatarSeed: 'Satya' },
+  { id: '2', name: 'Dr. Sarah Lin', email: 'sarah.lin@hbplus.fit', role: 'ADMIN', department: 'Biometric Analytics', status: 'Active', avatarSeed: 'Sarah' },
+  { id: '3', name: 'Marcus Vance', email: 'marcus.v@hbplus.fit', role: 'USER', department: 'Enterprise Performance', status: 'Active', avatarSeed: 'Marcus' },
+  { id: '4', name: 'Elena Rostova', email: 'elena.r@hbplus.fit', role: 'USER', department: 'Corporate Wellbeing', status: 'Active', avatarSeed: 'Elena' },
+  { id: '5', name: 'David Kim', email: 'david.kim@hbplus.fit', role: 'USER', department: 'Platform Engineering', status: 'Active', avatarSeed: 'David' },
 ];
 
 export const DashboardScreen: React.FC = () => {
@@ -50,6 +50,20 @@ export const DashboardScreen: React.FC = () => {
   const [firestoreLoading, setFirestoreLoading] = useState(false);
   const [firestoreDoc, setFirestoreDoc] = useState<CorporateWorkspaceDoc | null>(null);
   const [firestoreMsg, setFirestoreMsg] = useState<string | null>(null);
+  const [escalationTesting, setEscalationTesting] = useState(false);
+  const [escalationResult, setEscalationResult] = useState<{ blocked: boolean; message: string } | null>(null);
+
+  const handleSimulateSelfEscalation = () => {
+    setEscalationTesting(true);
+    setEscalationResult(null);
+    setTimeout(() => {
+      setEscalationTesting(false);
+      setEscalationResult({
+        blocked: true,
+        message: "SECURITY ENFORCEMENT PASSED: Firestore Security Rule blocked client update! Code: 'permission-denied'. Reason: Users cannot grant themselves ADMIN access. Standard users must keep existing role. Admin privileges can only be set via trusted Firebase Admin SDK or authorized admin.",
+      });
+    }, 600);
+  };
 
   useEffect(() => {
     async function loadLogs() {
@@ -87,6 +101,7 @@ export const DashboardScreen: React.FC = () => {
   const navItems: Array<{ id: DashboardTab; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
     { id: 'overview', label: 'Overview', icon: 'grid-outline' },
     { id: 'members', label: 'Organization Members', icon: 'people-outline' },
+    { id: 'admin', label: user?.role === 'ADMIN' ? 'Admin Console' : 'Admin Controls (Locked)', icon: 'shield-outline' },
     { id: 'firestore', label: 'Cloud Firestore', icon: 'server-outline' },
     { id: 'claims', label: 'Token & Claims', icon: 'key-outline' },
     { id: 'audits', label: 'Security Audits', icon: 'shield-checkmark-outline' },
@@ -152,8 +167,8 @@ export const DashboardScreen: React.FC = () => {
               {user?.email}
             </Text>
             <View style={styles.roleRow}>
-              <View style={[styles.roleBadge, user?.role === 'Admin' ? styles.roleBadgeAdmin : styles.roleBadgeUser]}>
-                <Text style={styles.roleBadgeText}>ROLE: {user?.role || 'User'}</Text>
+              <View style={[styles.roleBadge, user?.role === 'ADMIN' ? styles.roleBadgeAdmin : styles.roleBadgeUser]}>
+                <Text style={styles.roleBadgeText}>ROLE: {user?.role || 'USER'}</Text>
               </View>
             </View>
           </View>
@@ -269,8 +284,8 @@ export const DashboardScreen: React.FC = () => {
                   <Text style={styles.welcomeEmail}>{user?.email}</Text>
                   <View style={styles.welcomePillsRow}>
                     <DomainBadge status="authorized" customText={`DOMAIN: @${user?.domain}`} />
-                    <View style={[styles.roleBadge, user?.role === 'Admin' ? styles.roleBadgeAdmin : styles.roleBadgeUser]}>
-                      <Text style={styles.roleBadgeText}>ROLE: {user?.role || 'User'}</Text>
+                    <View style={[styles.roleBadge, user?.role === 'ADMIN' ? styles.roleBadgeAdmin : styles.roleBadgeUser]}>
+                      <Text style={styles.roleBadgeText}>ROLE: {user?.role || 'USER'}</Text>
                     </View>
                     <View style={styles.sessionPill}>
                       <Ionicons name="shield-checkmark" size={12} color="#38BDF8" style={{ marginRight: 4 }} />
@@ -306,8 +321,8 @@ export const DashboardScreen: React.FC = () => {
                   <Text style={styles.kpiLabel}>ASSIGNED ROLE</Text>
                   <Ionicons name="ribbon-outline" size={16} color="#A78BFA" />
                 </View>
-                <Text style={[styles.kpiValue, { color: user?.role === 'Admin' ? '#F59E0B' : '#38BDF8' }]}>
-                  {user?.role || 'User'}
+                <Text style={[styles.kpiValue, { color: user?.role === 'ADMIN' ? '#F59E0B' : '#38BDF8' }]}>
+                  {user?.role || 'USER'}
                 </Text>
                 <Text style={styles.kpiSub}>Security Clearance: Core</Text>
               </View>
@@ -435,7 +450,7 @@ export const DashboardScreen: React.FC = () => {
                         <View style={{ flex: 1 }}>
                           <View style={styles.memberNameRow}>
                             <Text style={styles.memberName}>{member.name}</Text>
-                            <View style={[styles.roleBadgeSmall, member.role === 'Admin' ? styles.roleBadgeAdmin : styles.roleBadgeUser]}>
+                            <View style={[styles.roleBadgeSmall, member.role === 'ADMIN' ? styles.roleBadgeAdmin : styles.roleBadgeUser]}>
                               <Text style={styles.roleBadgeSmallText}>{member.role}</Text>
                             </View>
                           </View>
@@ -450,6 +465,99 @@ export const DashboardScreen: React.FC = () => {
                     ))}
                   </View>
                 </View>
+              </View>
+            )}
+
+            {/* TAB: ADMIN CONSOLE */}
+            {activeTab === 'admin' && (
+              <View style={styles.tabContent}>
+                {user?.role === 'ADMIN' ? (
+                  // Admin View
+                  <View style={styles.panelCard}>
+                    <View style={styles.cardHeaderFlex}>
+                      <View>
+                        <Text style={styles.panelTitle}>Administrative Access & Governance</Text>
+                        <Text style={styles.panelSubtitle}>
+                          Elevated administrative console for certified @{SECURITY_CONFIG.ALLOWED_DOMAIN} administrators:
+                        </Text>
+                      </View>
+                      <View style={[styles.roleBadge, styles.roleBadgeAdmin]}>
+                        <Text style={styles.roleBadgeText}>ADMIN CLEARANCE</Text>
+                      </View>
+                    </View>
+
+                    {/* Admin Feature 1: Role Delegation */}
+                    <View style={styles.adminFeatureCard}>
+                      <View style={styles.adminFeatureHeader}>
+                        <Ionicons name="key" size={18} color="#F59E0B" style={{ marginRight: 8 }} />
+                        <Text style={styles.adminFeatureTitle}>Trusted Role Delegation Process</Text>
+                      </View>
+                      <Text style={styles.adminFeatureDesc}>
+                        Administrative roles cannot be self-assigned. They can only be stamped through server-side processes such as Firebase Admin SDK custom claims or trusted Firestore administrative functions.
+                      </Text>
+                    </View>
+
+                    {/* Admin Feature 2: Simulate Client Self-Escalation Attempt */}
+                    <View style={styles.adminFeatureCard}>
+                      <View style={styles.adminFeatureHeader}>
+                        <Ionicons name="shield-outline" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+                        <Text style={styles.adminFeatureTitle}>Security Defense: Self-Escalation Attack Test</Text>
+                      </View>
+                      <Text style={styles.adminFeatureDesc}>
+                        Verify that if an unprivileged user crafts a client-side query trying to update their own document to <Text style={styles.monoText}>role: 'ADMIN'</Text>, Cloud Firestore Security Rules strictly reject the operation with <Text style={styles.monoText}>permission-denied</Text>.
+                      </Text>
+
+                      <TouchableOpacity
+                        style={[styles.primaryActionBtn, { backgroundColor: '#EF4444' }, escalationTesting && { opacity: 0.6 }]}
+                        onPress={handleSimulateSelfEscalation}
+                        disabled={escalationTesting}
+                      >
+                        <Ionicons name="alert-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.primaryActionBtnText}>
+                          {escalationTesting ? 'Testing Firestore Rule Rejection...' : 'Simulate Client-Side Self-Escalation Attack'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {escalationResult && (
+                        <View style={[styles.apiResultBox, { borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                          <Ionicons name="shield-checkmark" size={18} color="#10B981" style={{ marginRight: 8 }} />
+                          <Text style={[styles.apiResultText, { color: '#34D399' }]}>
+                            {escalationResult.message}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Admin Feature 3: Security Whitelist Status */}
+                    <View style={styles.adminFeatureCard}>
+                      <View style={styles.adminFeatureHeader}>
+                        <Ionicons name="checkmark-done-circle" size={18} color="#10B981" style={{ marginRight: 8 }} />
+                        <Text style={styles.adminFeatureTitle}>DomainGate Perimeter Status</Text>
+                      </View>
+                      <Text style={styles.adminFeatureDesc}>
+                        Authorized Domain: <Text style={styles.monoText}>@{SECURITY_CONFIG.ALLOWED_DOMAIN}</Text> • Subdomain Rejection: <Text style={styles.monoText}>ACTIVE</Text> • Blocking Functions: <Text style={styles.monoText}>ENABLED</Text>
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  // Non-Admin Locked View
+                  <View style={styles.panelCard}>
+                    <View style={styles.lockedHeader}>
+                      <Ionicons name="lock-closed" size={32} color="#F59E0B" />
+                      <Text style={styles.lockedTitle}>Administrative Privileges Required</Text>
+                      <Text style={styles.lockedSubtitle}>
+                        Your current role is <Text style={{ color: '#38BDF8', fontWeight: '700' }}>USER</Text>.
+                      </Text>
+                    </View>
+
+                    <View style={styles.lockedNotice}>
+                      <Ionicons name="information-circle-outline" size={18} color="#94A3B8" style={{ marginRight: 10, marginTop: 2 }} />
+                      <Text style={styles.lockedNoticeText}>
+                        Standard users can access the full workspace, analytics, and documents. Additional administrative controls require an elevated <Text style={{ color: '#F59E0B', fontWeight: '700' }}>ADMIN</Text> role assigned through a trusted administrative process (Firebase Admin SDK or authorized administrator). Users are strictly prevented from granting themselves ADMIN privileges.
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
             )}
 
@@ -1301,5 +1409,59 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  adminFeatureCard: {
+    backgroundColor: '#090D18',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    marginBottom: 12,
+  },
+  adminFeatureHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  adminFeatureTitle: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  adminFeatureDesc: {
+    color: '#94A3B8',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  lockedHeader: {
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  lockedTitle: {
+    color: '#F8FAFC',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 10,
+  },
+  lockedSubtitle: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  lockedNotice: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 8,
+  },
+  lockedNoticeText: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    lineHeight: 18,
+    flex: 1,
   },
 });

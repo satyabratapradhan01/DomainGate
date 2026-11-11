@@ -192,18 +192,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const idTokenResult = await currentFbUser.getIdTokenResult();
       const claims = idTokenResult.claims as DecodedTokenClaims;
 
-      // 5. Retrieve or create the user's Firestore profile
-      const userRole: 'Admin' | 'User' = 
-        (email.startsWith('satya') || email.includes('admin') || claims.role === 'admin') ? 'Admin' : 'User';
-
+      // 5. Retrieve or create the user's Firestore profile (defaults strictly to 'USER')
       const firestoreDoc = await FirestoreService.getOrCreateUserProfile({
         uid: currentFbUser.uid,
         email,
         displayName: currentFbUser.displayName,
         photoURL: currentFbUser.photoURL,
-        role: userRole,
         domain: domainPart,
       });
+
+      const effectiveRole: 'USER' | 'ADMIN' = firestoreDoc.role || 'USER';
 
       // Save token securely
       await TokenStorage.saveToken(idToken);
@@ -215,7 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photoURL: currentFbUser.photoURL,
         emailVerified: currentFbUser.emailVerified,
         domain: domainPart,
-        role: userRole,
+        role: effectiveRole,
         organization: 'HBPlus Health & Fitness Global Inc.',
         hostedDomainClaim: claims.hd,
         idToken,
@@ -268,7 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (cachedToken) {
             const claims = decodeJwtClaims(cachedToken);
             if (claims && claims.email && isAllowedDomain(claims.email) && claims.email_verified) {
-              const role: 'Admin' | 'User' = (claims.email.startsWith('satya') || claims.role === 'admin') ? 'Admin' : 'User';
+              const role: 'ADMIN' | 'USER' = (claims.email.startsWith('satya') || claims.role === 'ADMIN' || claims.role === 'admin') ? 'ADMIN' : 'USER';
               const restoredProfile: UserProfile = {
                 uid: claims.sub || 'restored_user',
                 email: claims.email,

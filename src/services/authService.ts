@@ -19,7 +19,7 @@ export interface AuthenticatedUser {
   photoURL?: string | null;
   emailVerified: boolean;
   domain: string;
-  role: 'Admin' | 'User';
+  role: 'USER' | 'ADMIN';
   organization: string;
   hostedDomainClaim?: string;
   idToken: string;
@@ -157,10 +157,11 @@ export const AuthService = {
       platform: Platform.OS,
     });
 
-    const userRole: 'Admin' | 'User' = 
+    const userRole: 'USER' | 'ADMIN' = 
       (userProfile.email.toLowerCase().startsWith('satya') || 
        userProfile.email.toLowerCase().includes('admin') || 
-       claims.role === 'admin') ? 'Admin' : 'User';
+       claims.role === 'admin' || 
+       claims.role === 'ADMIN') ? 'ADMIN' : 'USER';
 
     const authenticatedUser: AuthenticatedUser = {
       uid: userProfile.uid,

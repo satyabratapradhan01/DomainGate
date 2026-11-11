@@ -119,3 +119,4 @@ firebase deploy --only storage:rules
 # 3. Deploy Cloud Blocking Functions
 firebase deploy --only functions
 ```
+

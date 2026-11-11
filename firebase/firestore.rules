@@ -3,50 +3,79 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     /**
-     * DOMAINGATE ZERO-TRUST ACCESS CONTROL
+     * DOMAINGATE ZERO-TRUST ACCESS CONTROL & RBAC ENFORCEMENT
      * 
-     * Even if an attacker manipulates the client-side code, memory,
-     * or routing tables, the database layer strictly enforces domain
-     * authorization on all read and write queries.
+     * Security Contract:
+     * 1. Only verified accounts belonging strictly to @hbplus.fit can access data.
+     * 2. Default role upon creation is strictly 'USER'.
+     * 3. Users CANNOT escalate their own privileges or modify their 'role' field.
+     * 4. Administrative privileges (role == 'ADMIN') can only be granted via
+     *    trusted server-side processes (Firebase Admin SDK or authorized admin).
      */
 
-    // Helper to evaluate if caller is authenticated with an authorized @hbplus.fit domain
+    // Helper: Validates caller has a verified @hbplus.fit Google account
     function isHBPlusAuthorized() {
       return request.auth != null
         && request.auth.token.email_verified == true
-        && request.auth.token.email.matches('.*@hbplus[.]fit$')
-        // Optional verification of custom claim stamped by blocking function:
-        // && request.auth.token.hbplusVerified == true;
+        && request.auth.token.email.matches('.*@hbplus[.]fit$');
     }
 
-    // Helper to verify user is accessing their own personal record
+    // Helper: Validates whether user is accessing their own document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // Public / unauthenticated collections are strictly locked
+    // Helper: Validates administrative privilege from trusted custom claims
+    function isAdmin() {
+      return isHBPlusAuthorized() && (
+        request.auth.token.role == 'ADMIN' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    // Default deny all unmatched collections
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Corporate Workspaces collection
+    // Users Collection: users/{uid}
+    match /users/{userId} {
+      // Users can read their own profile; Admins can read all profiles
+      allow read: if isHBPlusAuthorized() && (isOwner(userId) || isAdmin());
+
+      // Initial user creation:
+      // - Must be authorized @hbplus.fit account
+      // - Must match own userId
+      // - MUST HAVE DEFAULT ROLE == 'USER' (Prevents self-granting ADMIN access)
+      allow create: if isHBPlusAuthorized() 
+                    && isOwner(userId)
+                    && request.resource.data.uid == userId
+                    && request.resource.data.role == 'USER';
+
+      // Profile updates:
+      // - Standard users can update profile info (name, photoURL, lastLoginAt)
+      // - Standard users CANNOT CHANGE THEIR OWN ROLE: request.resource.data.role must equal existing role
+      // - Only Admins can modify the 'role' field
+      allow update: if isHBPlusAuthorized() && (
+        (isOwner(userId) && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
+
+      // Only trusted administrators can delete user records
+      allow delete: if isAdmin();
+    }
+
+    // Corporate Workspaces Collection
     match /workspaces/{workspaceId} {
       allow read: if isHBPlusAuthorized();
-      allow write: if isHBPlusAuthorized() && request.auth.token.role == 'admin';
+      allow write: if isAdmin();
     }
 
-    // User profile documents
-    match /users/{userId} {
-      allow read: if isHBPlusAuthorized();
-      allow write: if isHBPlusAuthorized() && isOwner(userId);
-    }
-
-    // Enterprise Audit Logs: Only authorized members can write their security audits
+    // Enterprise Audit Logs: Immutable log
     match /security_audits/{auditId} {
       allow create: if isHBPlusAuthorized();
       allow read: if isHBPlusAuthorized();
-      allow update, delete: if false; // Immutable audit log
+      allow update, delete: if false; // Immutable
     }
   }
 }
-
