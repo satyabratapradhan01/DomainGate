@@ -32,13 +32,16 @@ export const LoginScreen: React.FC = () => {
           {/* Top Brand Header */}
           <View style={styles.header}>
             <View style={styles.iconCircle}>
-              <Ionicons name="shield-half" size={36} color="#38BDF8" />
+              <Ionicons name="shield-checkmark" size={38} color="#38BDF8" />
             </View>
-            <Text style={styles.appTitle}>DomainGate</Text>
-            <Text style={styles.appSubtitle}>Enterprise OAuth & Zero-Trust Domain Firewall</Text>
+            <View style={styles.brandRow}>
+              <Text style={styles.appName}>DomainGate</Text>
+            </View>
+            <Text style={styles.appTitle}>Welcome to DomainGate</Text>
+            <Text style={styles.appSubtitle}>Secure access for authorized organization members.</Text>
             
             <View style={styles.badgeWrapper}>
-              <DomainBadge status="neutral" customText={`AUTHORIZED DOMAIN: @${SECURITY_CONFIG.ALLOWED_DOMAIN}`} />
+              <DomainBadge status="neutral" customText={`Authorized Domain: @${SECURITY_CONFIG.ALLOWED_DOMAIN}`} />
             </View>
           </View>
 
@@ -132,11 +135,24 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  appName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#38BDF8',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
   appTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: '#F8FAFC',
     letterSpacing: -0.5,
+    textAlign: 'center',
   },
   appSubtitle: {
     fontSize: 13,

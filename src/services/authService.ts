@@ -128,7 +128,7 @@ export const AuthService = {
         email: userProfile.email,
         domain: domainCheck.domain,
         isVerified: userProfile.emailVerified,
-        reason: domainCheck.reason,
+        reason: 'Access restricted. Please login using your official domain email.',
         platform: Platform.OS,
       });
 
@@ -138,7 +138,7 @@ export const AuthService = {
       return {
         success: false,
         errorCode: SECURITY_CONFIG.ERROR_CODES.UNAUTHORIZED_DOMAIN,
-        errorMessage: `Access Denied: The domain '@${domainCheck.domain}' is not authorized. DomainGate restricts access exclusively to verified members of '@${SECURITY_CONFIG.ALLOWED_DOMAIN}'.`,
+        errorMessage: 'Access restricted. Please login using your official domain email.',
         incidentId,
         attemptedEmail: userProfile.email,
         attemptedDomain: domainCheck.domain,

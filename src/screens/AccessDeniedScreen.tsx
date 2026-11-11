@@ -34,7 +34,12 @@ export const AccessDeniedScreen: React.FC = () => {
           </View>
 
           <Text style={styles.title}>Access Denied</Text>
-          <Text style={styles.subtitle}>Domain Authorization Firewall Triggered</Text>
+          <View style={styles.restrictedNoticeBox}>
+            <Ionicons name="alert-circle" size={16} color="#F87171" style={{ marginRight: 6 }} />
+            <Text style={styles.restrictedNoticeText}>
+              Access restricted. Please login using your official domain email.
+            </Text>
+          </View>
 
           {/* Account Breakdown Card */}
           <View style={styles.detailsCard}>
@@ -184,6 +189,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#EF4444',
     letterSpacing: -0.5,
+  },
+  restrictedNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 8,
+    marginBottom: 20,
+    maxWidth: '92%',
+  },
+  restrictedNoticeText: {
+    color: '#FCA5A5',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 13,
