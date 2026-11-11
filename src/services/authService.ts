@@ -185,50 +185,67 @@ export const AuthService = {
   },
 
   /**
-   * Live Google OAuth Flow
+   * Web: Authenticates using Firebase GoogleAuthProvider and signInWithPopup.
+   * Handles popup cancellation and browser popup blockers gracefully.
    */
-  async signInWithGoogleLive(): Promise<AuthSecurityResult> {
+  async signInWithGoogleWeb(): Promise<AuthSecurityResult> {
     try {
       const auth = getFirebaseAuth();
-      
-      // On Web, use standard Firebase signInWithPopup
-      if (Platform.OS === 'web') {
-        const result = await signInWithPopup(auth, googleAuthProvider);
-        const fbUser: FirebaseUser = result.user;
-        const idToken = await fbUser.getIdToken(true);
-        const idTokenResult = await fbUser.getIdTokenResult();
-        const claims: DecodedTokenClaims = idTokenResult.claims as DecodedTokenClaims;
+      const result = await signInWithPopup(auth, googleAuthProvider);
+      const fbUser: FirebaseUser = result.user;
+      const idToken = await fbUser.getIdToken(true);
+      const idTokenResult = await fbUser.getIdTokenResult();
+      const claims: DecodedTokenClaims = idTokenResult.claims as DecodedTokenClaims;
 
-        return await this.enforceSecurityBoundary(
-          {
-            uid: fbUser.uid,
-            email: fbUser.email || '',
-            displayName: fbUser.displayName,
-            photoURL: fbUser.photoURL,
-            emailVerified: fbUser.emailVerified,
-          },
-          idToken,
-          claims,
-          'GOOGLE_OAUTH_LIVE'
-        );
-      } else {
-        // Native mobile fallback or web browser flow
-        return {
-          success: false,
-          errorCode: 'NATIVE_OAUTH_SETUP_INFO',
-          errorMessage: 'On native mobile devices, live Google Sign-In connects via Google Services or Expo AuthSession. Use the Enterprise Test Rig or configured Google credentials.',
-        };
-      }
+      return await this.enforceSecurityBoundary(
+        {
+          uid: fbUser.uid,
+          email: fbUser.email || '',
+          displayName: fbUser.displayName,
+          photoURL: fbUser.photoURL,
+          emailVerified: fbUser.emailVerified,
+        },
+        idToken,
+        claims,
+        'GOOGLE_OAUTH_LIVE'
+      );
     } catch (err: any) {
-      console.error('[AuthService] Google Sign-In error:', err);
+      console.warn('[AuthService] Google Web Sign-In error:', err);
       const incidentId = generateIncidentId();
 
-      // Check if Firebase blocking function rejected the user
+      // Explicit error mapping for browser popup scenarios
+      if (err.code === 'auth/popup-closed-by-user') {
+        return {
+          success: false,
+          errorCode: 'POPUP_CLOSED_BY_USER',
+          errorMessage: 'Sign-in cancelled: The Google authentication popup was closed before completing login.',
+          incidentId,
+        };
+      }
+
+      if (err.code === 'auth/popup-blocked') {
+        return {
+          success: false,
+          errorCode: 'POPUP_BLOCKED_BY_BROWSER',
+          errorMessage: 'Sign-in failed: The authentication popup was blocked by your browser. Please allow popups for this site and try again.',
+          incidentId,
+        };
+      }
+
+      if (err.code === 'auth/cancelled-popup-request') {
+        return {
+          success: false,
+          errorCode: 'POPUP_REQUEST_CANCELLED',
+          errorMessage: 'An authentication popup is already open. Please complete or close the open Google window.',
+          incidentId,
+        };
+      }
+
       if (err.code === 'auth/blocking-cloud-function-error' || err.message?.includes('permission-denied')) {
         return {
           success: false,
           errorCode: SECURITY_CONFIG.ERROR_CODES.BLOCKING_RULE_REJECTION,
-          errorMessage: 'Firebase Authentication Blocking Function rejected authentication: Domain not authorized.',
+          errorMessage: 'Access restricted: Firebase Cloud Identity blocking function rejected unauthorized domain.',
           incidentId,
         };
       }
@@ -236,8 +253,73 @@ export const AuthService = {
       return {
         success: false,
         errorCode: err.code || 'AUTH_FAILURE',
-        errorMessage: err.message || 'An error occurred during Google authentication.',
+        errorMessage: err.message || 'Google authentication encountered an unexpected error.',
         incidentId,
+      };
+    }
+  },
+
+  /**
+   * Android & iOS: Exchanges Google ID token from expo-auth-session for Firebase credential.
+   * Authenticates using Firebase signInWithCredential().
+   */
+  async exchangeGoogleIdTokenAndAuthorize(googleIdToken: string): Promise<AuthSecurityResult> {
+    try {
+      const auth = getFirebaseAuth();
+      // Exchange ID token for Firebase Credential
+      const credential = GoogleAuthProvider.credential(googleIdToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      const fbUser: FirebaseUser = userCredential.user;
+
+      const idToken = await fbUser.getIdToken(true);
+      const idTokenResult = await fbUser.getIdTokenResult();
+      const claims: DecodedTokenClaims = idTokenResult.claims as DecodedTokenClaims;
+
+      return await this.enforceSecurityBoundary(
+        {
+          uid: fbUser.uid,
+          email: fbUser.email || '',
+          displayName: fbUser.displayName,
+          photoURL: fbUser.photoURL,
+          emailVerified: fbUser.emailVerified,
+        },
+        idToken,
+        claims,
+        'GOOGLE_OAUTH_LIVE'
+      );
+    } catch (err: any) {
+      console.warn('[AuthService] Mobile credential exchange error:', err);
+      const incidentId = generateIncidentId();
+
+      if (err.code === 'auth/blocking-cloud-function-error' || err.message?.includes('permission-denied')) {
+        return {
+          success: false,
+          errorCode: SECURITY_CONFIG.ERROR_CODES.BLOCKING_RULE_REJECTION,
+          errorMessage: 'Access restricted: Firebase Cloud Identity blocking function rejected unauthorized domain.',
+          incidentId,
+        };
+      }
+
+      return {
+        success: false,
+        errorCode: err.code || 'CREDENTIAL_EXCHANGE_FAILURE',
+        errorMessage: err.message || 'Failed to authenticate Google credential with Firebase.',
+        incidentId,
+      };
+    }
+  },
+
+  /**
+   * Unified Live Google OAuth entry point
+   */
+  async signInWithGoogleLive(): Promise<AuthSecurityResult> {
+    if (Platform.OS === 'web') {
+      return await this.signInWithGoogleWeb();
+    } else {
+      return {
+        success: false,
+        errorCode: 'NATIVE_USE_HOOK',
+        errorMessage: 'Native mobile authentication should be triggered via useGoogleAuth() hook for OAuth session handling.',
       };
     }
   },

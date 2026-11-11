@@ -33,6 +33,9 @@ interface AuthContextType {
   simulateSignIn: (email: string, displayName?: string, isVerified?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
   clearIncident: () => void;
+  handleSecurityResult: (result: AuthSecurityResult) => void;
+  setAuthBusy: (busy: boolean) => void;
+  setAuthError: (error: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -158,6 +161,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState('IDLE');
   };
 
+  const setAuthBusy = (busy: boolean) => {
+    if (busy) {
+      setState('AUTHENTICATING');
+      setErrorMessage(null);
+    }
+  };
+
+  const setAuthError = (error: string) => {
+    setState('ERROR');
+    setErrorMessage(error);
+  };
+
   const value = useMemo(
     () => ({
       state,
@@ -168,6 +183,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       simulateSignIn,
       signOut,
       clearIncident,
+      handleSecurityResult,
+      setAuthBusy,
+      setAuthError,
     }),
     [state, user, incident, errorMessage]
   );

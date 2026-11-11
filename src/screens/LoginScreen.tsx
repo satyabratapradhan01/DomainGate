@@ -15,9 +15,11 @@ import { GoogleButton } from '../components/GoogleButton';
 import { SecurityNotice } from '../components/SecurityNotice';
 import { SecurityTestRig } from '../components/SecurityTestRig';
 import { SECURITY_CONFIG } from '../config/securityConfig';
+import { useGoogleAuth } from '../hooks/useGoogleAuth';
 
 export const LoginScreen: React.FC = () => {
-  const { signInWithGoogle, state, errorMessage } = useAuth();
+  const { state, errorMessage } = useAuth();
+  const { startGoogleSignIn } = useGoogleAuth();
 
   const isAuthenticating = state === 'AUTHENTICATING';
   const isVerifying = state === 'VERIFYING_DOMAIN';
@@ -68,7 +70,7 @@ export const LoginScreen: React.FC = () => {
           <View style={styles.authSection}>
             <Text style={styles.sectionHeader}>Single Sign-On</Text>
             <GoogleButton 
-              onPress={signInWithGoogle}
+              onPress={startGoogleSignIn}
               isLoading={isAuthenticating}
               label="Sign in with Google"
               subLabel="Google Workspace & OAuth 2.0"
