@@ -32,3 +32,4 @@ jobs:
 
       - name: Build Web Production Bundle
         run: npx expo export --platform web
+
