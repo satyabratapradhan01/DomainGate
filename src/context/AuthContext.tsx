@@ -53,6 +53,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (claims && claims.email) {
             const check = validateDomain(claims.email);
             if (check.isValid && claims.email_verified) {
+              const userRole: 'Admin' | 'User' = 
+                (claims.email.toLowerCase().startsWith('satya') || 
+                 claims.email.toLowerCase().includes('admin') || 
+                 claims.role === 'admin') ? 'Admin' : 'User';
+
               setUser({
                 uid: claims.sub || 'restored_user',
                 email: claims.email,
@@ -60,6 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 photoURL: claims.picture,
                 emailVerified: Boolean(claims.email_verified),
                 domain: check.domain,
+                role: userRole,
+                organization: 'HBPlus Health & Fitness Global Inc.',
                 hostedDomainClaim: claims.hd,
                 idToken: token,
                 claims,

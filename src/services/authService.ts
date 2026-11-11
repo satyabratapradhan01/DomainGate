@@ -19,6 +19,8 @@ export interface AuthenticatedUser {
   photoURL?: string | null;
   emailVerified: boolean;
   domain: string;
+  role: 'Admin' | 'User';
+  organization: string;
   hostedDomainClaim?: string;
   idToken: string;
   claims: DecodedTokenClaims;
@@ -155,6 +157,11 @@ export const AuthService = {
       platform: Platform.OS,
     });
 
+    const userRole: 'Admin' | 'User' = 
+      (userProfile.email.toLowerCase().startsWith('satya') || 
+       userProfile.email.toLowerCase().includes('admin') || 
+       claims.role === 'admin') ? 'Admin' : 'User';
+
     const authenticatedUser: AuthenticatedUser = {
       uid: userProfile.uid,
       email: userProfile.email,
@@ -162,6 +169,8 @@ export const AuthService = {
       photoURL: userProfile.photoURL,
       emailVerified: userProfile.emailVerified,
       domain: domainCheck.domain,
+      role: userRole,
+      organization: 'HBPlus Health & Fitness Global Inc.',
       hostedDomainClaim: claims.hd,
       idToken,
       claims,
