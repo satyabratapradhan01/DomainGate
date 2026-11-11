@@ -1,0 +1,23 @@
+{
+  "name": "domaingate-backend-verifier",
+  "version": "1.0.0",
+  "description": "Enterprise Backend Token & Domain Verification Service for DomainGate",
+  "main": "verifyTokenServer.js",
+  "scripts": {
+    "start": "ts-node verifyTokenServer.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.0.0",
+    "google-auth-library": "^9.7.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.24",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
+

@@ -1,0 +1,30 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Check if user is authenticated and verified with @hbplus.fit
+    function isHBPlusAuthorized() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@hbplus[.]fit$');
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Protected corporate assets
+    match /corporate-vault/{fileName} {
+      allow read: if isHBPlusAuthorized();
+      allow write: if isHBPlusAuthorized() && request.auth.token.role == 'admin';
+    }
+
+    // User avatar storage
+    match /avatars/{userId}/{fileName} {
+      allow read: if isHBPlusAuthorized();
+      allow write: if isHBPlusAuthorized() && request.auth.uid == userId;
+    }
+  }
+}
+

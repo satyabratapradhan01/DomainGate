@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    /**
+     * DOMAINGATE ZERO-TRUST ACCESS CONTROL
+     * 
+     * Even if an attacker manipulates the client-side code, memory,
+     * or routing tables, the database layer strictly enforces domain
+     * authorization on all read and write queries.
+     */
+
+    // Helper to evaluate if caller is authenticated with an authorized @hbplus.fit domain
+    function isHBPlusAuthorized() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@hbplus[.]fit$')
+        // Optional verification of custom claim stamped by blocking function:
+        // && request.auth.token.hbplusVerified == true;
+    }
+
+    // Helper to verify user is accessing their own personal record
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Public / unauthenticated collections are strictly locked
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Corporate Workspaces collection
+    match /workspaces/{workspaceId} {
+      allow read: if isHBPlusAuthorized();
+      allow write: if isHBPlusAuthorized() && request.auth.token.role == 'admin';
+    }
+
+    // User profile documents
+    match /users/{userId} {
+      allow read: if isHBPlusAuthorized();
+      allow write: if isHBPlusAuthorized() && isOwner(userId);
+    }
+
+    // Enterprise Audit Logs: Only authorized members can write their security audits
+    match /security_audits/{auditId} {
+      allow create: if isHBPlusAuthorized();
+      allow read: if isHBPlusAuthorized();
+      allow update, delete: if false; // Immutable audit log
+    }
+  }
+}
+
