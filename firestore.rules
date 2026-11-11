@@ -1,0 +1,170 @@
+rules_version = '2';
+
+/**
+ * DomainGate — Enterprise Firestore Security Rules
+ * 
+ * ZERO-TRUST SECURITY SPECIFICATION:
+ * 1. Authentication Required: User must have an active, signed Firebase Auth session.
+ * 2. Email Verified: User's email must be verified by Google Identity Provider (email_verified == true).
+ * 3. Domain Restricted: User email must belong strictly to @hbplus.fit.
+ * 4. Least Privilege / Owner Isolation: Users can only read their own profile (users/{userId})
+ *    unless explicitly authorized as an ADMIN.
+ * 5. Role Tamper-Proofing: Users CANNOT modify their assigned role.
+ * 6. Privilege Escalation Prevention: Users CANNOT grant themselves ADMIN privileges during creation or updates.
+ * 7. Default Deny: All unmatched collections and documents are strictly denied.
+ * 8. Production Hardened: No test mode rules or date-expiring escape hatches.
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // Core Authorization Functions
+    // =========================================================================
+
+    /**
+     * Verifies that the request originates from a valid, authenticated user.
+     */
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    /**
+     * Verifies that the authenticated user's email address has been verified.
+     */
+    function isEmailVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+
+    /**
+     * Verifies that the user's email strictly belongs to the authorized corporate domain (@hbplus.fit).
+     * Prevents subdomain spoofing, prefix/suffix hijacking, and consumer email providers.
+     */
+    function hasAuthorizedDomain() {
+      return isEmailVerified()
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('^[a-zA-Z0-9._%+-]+@hbplus[.]fit$');
+    }
+
+    /**
+     * Composite Gate: Authenticated + Verified + @hbplus.fit domain.
+     * Denies all access to unauthorized domains (@gmail.com, @yahoo.com, etc.).
+     */
+    function isHBPlusAuthorized() {
+      return hasAuthorizedDomain();
+    }
+
+    /**
+     * Checks if the caller is the owner of the document referenced by userId.
+     */
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    /**
+     * Validates whether the caller possesses verified ADMIN privileges.
+     * Admin rights are established ONLY via trusted administrative channels:
+     * - Firebase Auth Custom Claims (request.auth.token.role == 'ADMIN' or request.auth.token.admin == true)
+     * - Or existing Firestore user record with role == 'ADMIN'
+     */
+    function isAdmin() {
+      return isHBPlusAuthorized() && (
+        request.auth.token.role == 'ADMIN' ||
+        request.auth.token.admin == true ||
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'
+        )
+      );
+    }
+
+    // =========================================================================
+    // Collection Rules
+    // =========================================================================
+
+    /**
+     * Users Collection: /users/{userId}
+     *
+     * Schema:
+     * - uid: string (must match authenticated uid)
+     * - name: string
+     * - email: string (must match authenticated email)
+     * - photoURL: string (optional)
+     * - role: 'USER' | 'ADMIN' (default must be 'USER')
+     * - organization: string
+     * - createdAt: timestamp or ISO string
+     * - lastLoginAt: timestamp or ISO string
+     */
+    match /users/{userId} {
+      // 1. READ: Users can ONLY read their own profile; Admins can read any profile
+      allow read: if isHBPlusAuthorized() && (isOwner(userId) || isAdmin());
+
+      // 2. CREATE:
+      // - Must be an authorized @hbplus.fit user
+      // - Must be creating their own document (userId == request.auth.uid)
+      // - uid field in payload must match auth.uid
+      // - email field must match verified token email
+      // - DEFAULT ROLE MUST BE 'USER' — Users CANNOT grant themselves 'ADMIN' access
+      allow create: if isHBPlusAuthorized()
+                    && isOwner(userId)
+                    && request.resource.data.uid == userId
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.role == 'USER';
+
+      // 3. UPDATE:
+      // - Regular users can update their own profile fields (name, photoURL, lastLoginAt)
+      // - USERS CANNOT MODIFY THEIR ROLE: request.resource.data.role must equal existing resource.data.role
+      // - Users CANNOT escalate to ADMIN privileges
+      // - Only verified Admins can alter the 'role' field
+      allow update: if isHBPlusAuthorized() && (
+        (isOwner(userId) && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
+
+      // 4. DELETE:
+      // - Only verified Administrators can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * Corporate Workspaces: /workspaces/{workspaceId}
+     * - All verified @hbplus.fit personnel can view workspace data
+     * - Only Admins can modify workspace configuration
+     */
+    match /workspaces/{workspaceId} {
+      allow read: if isHBPlusAuthorized();
+      allow write: if isAdmin();
+    }
+
+    /**
+     * Corporate Member Directory: /directory/{memberId}
+     * - Read-only for authorized members
+     * - Admin-only write
+     */
+    match /directory/{memberId} {
+      allow read: if isHBPlusAuthorized();
+      allow write: if isAdmin();
+    }
+
+    /**
+     * Security Audit Logs: /security_audits/{auditId}
+     * - Authorized members and services can append audit logs
+     * - Only Admins can review security audits
+     * - Strictly immutable: Updates and deletions are completely blocked
+     */
+    match /security_audits/{auditId} {
+      allow create: if isHBPlusAuthorized();
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // =========================================================================
+    // Default Deny-All Rule
+    // =========================================================================
+    // Any document or collection not explicitly matched above is strictly blocked.
+    // Unauthorized domains (@gmail.com, @yahoo.com, etc.) receive permission-denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

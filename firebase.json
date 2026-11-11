@@ -12,7 +12,7 @@
     }
   ],
   "firestore": {
-    "rules": "firebase/firestore.rules"
+    "rules": "firestore.rules"
   },
   "storage": {
     "rules": "firebase/storage.rules"
@@ -33,4 +33,3 @@
     }
   }
 }
-
