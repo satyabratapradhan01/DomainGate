@@ -102,3 +102,4 @@ This guide provides step-by-step instructions to configure Google OAuth 2.0 with
 - ✅ **Single Shared Security Boundary**: Regardless of whether the user signs in on Chrome, Safari, Android, or iOS, authentication results pass through `AuthService.enforceSecurityBoundary()`.
 - ✅ **Domain Enforcement**: Only verified accounts matching `@hbplus.fit` are admitted. All other accounts trigger an atomic teardown (`auth.signOut()`, token wiping, quarantine).
 - ✅ **Server-Side Identity Blocking Functions**: In production, Firebase Cloud Functions (`firebase/functions/index.js`) block unauthorized account creation before any token can be minted.
+

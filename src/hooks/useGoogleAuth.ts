@@ -82,3 +82,4 @@ export function useGoogleAuth() {
     isReady: Boolean(request) || Platform.OS === 'web',
   };
 }
+
