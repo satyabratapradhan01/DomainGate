@@ -5,8 +5,10 @@
  * security error codes, and audit requirements.
  */
 
+import { isAllowedDomain, validateDomainAccess } from '../utils/domainValidator';
+
 export const SECURITY_CONFIG = {
-  // The strictly authorized email domain for all users
+  // Centralized allowed email domain for all users
   ALLOWED_DOMAIN: 'hbplus.fit',
   
   // Security Enforcement Mode
@@ -33,9 +35,11 @@ export const SECURITY_CONFIG = {
   } as const,
 };
 
+export { isAllowedDomain, validateDomainAccess };
+
 /**
- * Validates whether an email string strictly belongs to the authorized domain
- * and is normalized to prevent Unicode/homograph or case-bypass attacks.
+ * Validates whether an email string strictly belongs to the authorized domain.
+ * Integrates directly with src/utils/domainValidator.ts.
  */
 export function validateDomain(email?: string | null): {
   isValid: boolean;
@@ -43,50 +47,12 @@ export function validateDomain(email?: string | null): {
   domain: string;
   reason?: string;
 } {
-  if (!email || typeof email !== 'string') {
-    return {
-      isValid: false,
-      normalizedEmail: '',
-      domain: '',
-      reason: 'Missing or empty email address',
-    };
-  }
-
-  // Normalize: lower case and trim spaces
-  const normalized = email.trim().toLowerCase();
-  
-  // Strict regex splitting local part from domain
-  const parts = normalized.split('@');
-  if (parts.length !== 2) {
-    return {
-      isValid: false,
-      normalizedEmail: normalized,
-      domain: '',
-      reason: 'Malformed email structure',
-    };
-  }
-
-  const [localPart, domainPart] = parts;
-  if (!localPart || !domainPart) {
-    return {
-      isValid: false,
-      normalizedEmail: normalized,
-      domain: domainPart || '',
-      reason: 'Empty user or domain component',
-    };
-  }
-
-  // Ensure exact match against allowed domain
-  const targetDomain = SECURITY_CONFIG.ALLOWED_DOMAIN.toLowerCase();
-  const isValid = domainPart === targetDomain;
-
+  const result = validateDomainAccess(email, true);
   return {
-    isValid,
-    normalizedEmail: normalized,
-    domain: domainPart,
-    reason: isValid 
-      ? undefined 
-      : `Domain '@${domainPart}' is not authorized. Access is restricted exclusively to '@${targetDomain}'.`,
+    isValid: result.isValid,
+    normalizedEmail: result.normalizedEmail,
+    domain: result.domain,
+    reason: result.reason,
   };
 }
 

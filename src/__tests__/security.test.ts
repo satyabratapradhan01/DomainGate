@@ -6,6 +6,7 @@
  */
 
 import { validateDomain, SECURITY_CONFIG } from '../config/securityConfig';
+import { isAllowedDomain, validateDomainAccess } from '../utils/domainValidator';
 import { decodeJwtClaims, isTokenExpired } from '../services/tokenService';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64';
 
@@ -21,6 +22,57 @@ export function runSecurityTestSuite(): {
   const addTest = (name: string, fn: () => void) => {
     tests.push({ name, fn });
   };
+
+  // Direct isAllowedDomain(email: string): boolean tests
+  addTest('isAllowedDomain("satya@hbplus.fit") returns true', () => {
+    if (isAllowedDomain('satya@hbplus.fit') !== true) {
+      throw new Error('Expected isAllowedDomain("satya@hbplus.fit") to return true');
+    }
+  });
+
+  addTest('isAllowedDomain("example@gmail.com") returns false', () => {
+    if (isAllowedDomain('example@gmail.com') !== false) {
+      throw new Error('Expected isAllowedDomain("example@gmail.com") to return false');
+    }
+  });
+
+  addTest('isAllowedDomain("example@yahoo.com") returns false', () => {
+    if (isAllowedDomain('example@yahoo.com') !== false) {
+      throw new Error('Expected isAllowedDomain("example@yahoo.com") to return false');
+    }
+  });
+
+  addTest('isAllowedDomain("example@anothercompany.com") returns false', () => {
+    if (isAllowedDomain('example@anothercompany.com') !== false) {
+      throw new Error('Expected isAllowedDomain("example@anothercompany.com") to return false');
+    }
+  });
+
+  addTest('isAllowedDomain("satya@sub.hbplus.fit") returns false (subdomain rejection)', () => {
+    if (isAllowedDomain('satya@sub.hbplus.fit') !== false) {
+      throw new Error('Subdomain was not rejected by isAllowedDomain');
+    }
+  });
+
+  addTest('isAllowedDomain("satya@hbplus.fit.evil.com") returns false (suffix spoof rejection)', () => {
+    if (isAllowedDomain('satya@hbplus.fit.evil.com') !== false) {
+      throw new Error('Suffix spoof was not rejected by isAllowedDomain');
+    }
+  });
+
+  addTest('isAllowedDomain("SATYA@HBPLUS.FIT") returns true (case-insensitive comparison)', () => {
+    if (isAllowedDomain('SATYA@HBPLUS.FIT') !== true) {
+      throw new Error('Case-insensitive match failed');
+    }
+  });
+
+  addTest('isAllowedDomain with malformed emails returns false', () => {
+    if (isAllowedDomain('') !== false) throw new Error('Empty string permitted');
+    if (isAllowedDomain('invalid') !== false) throw new Error('Plain string permitted');
+    if (isAllowedDomain('satya@') !== false) throw new Error('Missing domain permitted');
+    if (isAllowedDomain('@hbplus.fit') !== false) throw new Error('Missing local part permitted');
+    if (isAllowedDomain('satya@@hbplus.fit') !== false) throw new Error('Double @ permitted');
+  });
 
   // 1. Core Specification Cases
   addTest('Spec Case 1: satya@hbplus.fit should be GRANTED', () => {
