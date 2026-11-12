@@ -64,12 +64,26 @@ export function sanitizeAuthError(error: any): SanitizedError {
     rawCode.includes('cancelled-popup-request') ||
     rawCode.includes('dismissed') ||
     rawCode.includes('auth_cancelled') ||
+    rawCode.includes('12501') || // Google Sign-In statusCodes.SIGN_IN_CANCELLED
     rawMsg.includes('popup closed') ||
     rawMsg.includes('cancelled')
   ) {
     return {
       code: 'AUTH_CANCELLED',
       userMessage: 'Sign-in was cancelled before completion. Please try again when ready.',
+      isRecoverable: true,
+    };
+  }
+
+  // Google Play Services Not Available
+  if (
+    rawCode.includes('play_services_not_available') ||
+    rawCode.includes('12500') ||
+    rawMsg.includes('play services')
+  ) {
+    return {
+      code: 'AUTH_FAILED',
+      userMessage: 'Google Play Services is not available or outdated on this device. Please update Google Play Services and try again.',
       isRecoverable: true,
     };
   }
