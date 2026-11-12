@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AuthService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { sanitizeAuthError } from '../utils/errorHandler';
@@ -12,11 +14,29 @@ WebBrowser.maybeCompleteAuthSession();
 export function useGoogleAuth() {
   const { handleSecurityResult, setAuthBusy, setAuthError } = useAuth();
 
-  // Configure Google ID token request for Mobile (iOS & Android)
+  // Detect whether running in Expo Go client vs standalone / custom dev build
+  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+  // Build the appropriate redirect URI
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'domaingate',
+  });
+
+  // Log for convenient Google Cloud Console setup
+  if (Platform.OS !== 'web') {
+    console.log(`[DomainGate] Google Auth redirectUri (${Platform.OS}, ExpoGo=${isExpoGo}):`, redirectUri);
+  }
+
+  // Configure Google ID token request:
+  // In Expo Go, Google rejects 'androidClientId' with browser redirects (redirect_uri_mismatch).
+  // Per Expo docs, Expo Go must use the Web Client ID ('clientId').
+  // Standalone builds use 'androidClientId' with custom scheme redirect.
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || '102938475610-web-domaingate.apps.googleusercontent.com',
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS || '102938475610-ios-domaingate.apps.googleusercontent.com',
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID || '102938475610-android-domaingate.apps.googleusercontent.com',
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+    iosClientId: isExpoGo ? undefined : process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+    androidClientId: isExpoGo ? undefined : process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
+    redirectUri,
     selectAccount: true,
   });
 
