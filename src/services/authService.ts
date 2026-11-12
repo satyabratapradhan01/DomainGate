@@ -373,10 +373,19 @@ export const AuthService = {
       // Ignore if auth not initialized
     }
     await TokenStorage.clearToken();
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
+      try {
+        window.history.replaceState(null, '', '/login');
+      } catch {}
+    }
   },
 
   /**
-   * Standard user logout
+   * Standard user logout:
+   * 1. Signs out from Firebase Authentication.
+   * 2. Clears secure tokens and cached session data.
+   * 3. Logs an audit entry.
+   * 4. Updates browser history to prevent back-button access.
    */
   async signOut(): Promise<void> {
     await this.emergencyPurge();

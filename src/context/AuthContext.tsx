@@ -355,18 +355,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Core Logout Function
+   * - Signs out from Firebase Authentication
+   * - Clears tokens and user-specific application state
+   * - Wipes session storage and local cache
+   * - Replaces browser history with /login to prevent Back-button re-entry
+   * - Automatically redirects to the Login screen via conditional routing
    */
   const logout = async () => {
     setIsLoading(true);
     try {
+      // 1. Sign out from Firebase Authentication & purge stored credentials
       await AuthService.signOut();
+
+      // 2. Clear all user-specific application state
       setFirebaseUser(null);
       setUserProfile(null);
       setIncident(null);
       setErrorMessage(null);
       setAuthorizationStatus('IDLE');
+
+      // 3. Clear browser history on Web to prevent back-button re-entry into dashboard
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
+        try {
+          window.history.replaceState(null, '', '/login');
+        } catch {}
+      }
     } catch (err: any) {
       console.warn('[AuthContext] Logout warning:', err);
+      // Guarantee local state is cleared even if network sign-out encounters an error
+      setFirebaseUser(null);
+      setUserProfile(null);
+      setIncident(null);
+      setErrorMessage(null);
+      setAuthorizationStatus('IDLE');
     } finally {
       setIsLoading(false);
     }

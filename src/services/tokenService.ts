@@ -79,9 +79,20 @@ export const TokenStorage = {
   async clearToken(): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        await AsyncStorage.removeItem(SECURITY_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        await AsyncStorage.multiRemove([
+          SECURITY_CONFIG.STORAGE_KEYS.AUTH_TOKEN,
+          SECURITY_CONFIG.STORAGE_KEYS.USER_PROFILE,
+        ]);
+        if (typeof window !== 'undefined') {
+          try {
+            window.sessionStorage?.clear();
+            window.localStorage?.removeItem(SECURITY_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+            window.localStorage?.removeItem(SECURITY_CONFIG.STORAGE_KEYS.USER_PROFILE);
+          } catch {}
+        }
       } else {
         await SecureStore.deleteItemAsync(SECURITY_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        await SecureStore.deleteItemAsync(SECURITY_CONFIG.STORAGE_KEYS.USER_PROFILE);
       }
     } catch (err) {
       console.error('[TokenStorage] Error clearing token:', err);

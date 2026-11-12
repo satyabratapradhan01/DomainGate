@@ -69,6 +69,23 @@ function AppInitializationGate() {
 export const RootNavigator: React.FC = () => {
   const { isAuthorized, state, isInitializing } = useAuth();
 
+  // Guard against browser history re-entry (e.g. Back button) on Web
+  React.useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const enforceLoginUrl = () => {
+        if (!isAuthorized && window.location.pathname.includes('dashboard')) {
+          window.history.replaceState(null, '', '/login');
+        }
+      };
+
+      enforceLoginUrl();
+      window.addEventListener('popstate', enforceLoginUrl);
+      return () => {
+        window.removeEventListener('popstate', enforceLoginUrl);
+      };
+    }
+  }, [isAuthorized]);
+
   // 1. Prevent access while authentication is still initializing
   if (isInitializing) {
     return <AppInitializationGate />;

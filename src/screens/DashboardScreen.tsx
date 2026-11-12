@@ -8,7 +8,8 @@ import {
   SafeAreaView, 
   Image,
   Platform,
-  useWindowDimensions 
+  useWindowDimensions,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -39,7 +40,7 @@ const CORPORATE_MEMBERS: TeamMember[] = [
 ];
 
 export const DashboardScreen: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isLoading } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
@@ -177,10 +178,15 @@ export const DashboardScreen: React.FC = () => {
         <TouchableOpacity 
           style={styles.sidebarLogoutBtn} 
           onPress={signOut}
+          disabled={isLoading}
           activeOpacity={0.8}
         >
-          <Ionicons name="log-out-outline" size={16} color="#F87171" style={{ marginRight: 6 }} />
-          <Text style={styles.sidebarLogoutText}>Logout</Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#F87171" style={{ marginRight: 6 }} />
+          ) : (
+            <Ionicons name="log-out-outline" size={16} color="#F87171" style={{ marginRight: 6 }} />
+          )}
+          <Text style={styles.sidebarLogoutText}>{isLoading ? 'Signing out...' : 'Logout'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -219,10 +225,15 @@ export const DashboardScreen: React.FC = () => {
                 <TouchableOpacity 
                   style={styles.mobileLogoutBtn}
                   onPress={signOut}
+                  disabled={isLoading}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="log-out-outline" size={16} color="#F87171" />
-                  <Text style={styles.mobileLogoutText}>Logout</Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#F87171" style={{ marginRight: 4 }} />
+                  ) : (
+                    <Ionicons name="log-out-outline" size={16} color="#F87171" />
+                  )}
+                  <Text style={styles.mobileLogoutText}>{isLoading ? '...' : 'Logout'}</Text>
                 </TouchableOpacity>
               )}
             </View>
