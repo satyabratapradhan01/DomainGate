@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { DomainBadge } from '../components/DomainBadge';
-import { GoogleButton } from '../components/GoogleButton';
+import { GoogleLoginButton } from '../components/GoogleLoginButton';
 import { SecurityTestRig } from '../components/SecurityTestRig';
 import { SECURITY_CONFIG } from '../config/securityConfig';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
@@ -85,7 +85,7 @@ export const LoginScreen: React.FC = () => {
 
             {/* Authentication Action Section */}
             <View style={styles.authSection}>
-              <GoogleButton 
+              <GoogleLoginButton 
                 onPress={startGoogleSignIn}
                 isLoading={isAuthenticating}
                 label="Sign in with Google"

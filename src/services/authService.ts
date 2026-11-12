@@ -8,35 +8,17 @@ import {
 import { Platform } from 'react-native';
 import { getFirebaseAuth, googleAuthProvider } from '../config/firebase';
 import { SECURITY_CONFIG, validateDomain, generateIncidentId } from '../config/securityConfig';
-import { TokenStorage, DecodedTokenClaims } from './tokenService';
+import { TokenStorage } from './tokenService';
 import { logAuditEvent } from '../utils/auditLogger';
 import { base64UrlEncode } from '../utils/base64';
+import { 
+  AuthenticatedUser, 
+  UserProfile, 
+  AuthSecurityResult, 
+  DecodedTokenClaims 
+} from '../types/auth.types';
 
-export interface AuthenticatedUser {
-  uid: string;
-  email: string;
-  displayName: string;
-  photoURL?: string | null;
-  emailVerified: boolean;
-  domain: string;
-  role: 'USER' | 'ADMIN';
-  organization: string;
-  hostedDomainClaim?: string;
-  idToken: string;
-  claims: DecodedTokenClaims;
-  authMethod: 'GOOGLE_OAUTH_LIVE' | 'ENTERPRISE_TEST_RIG';
-  authenticatedAt: string;
-}
-
-export interface AuthSecurityResult {
-  success: boolean;
-  user?: AuthenticatedUser;
-  errorCode?: string;
-  errorMessage?: string;
-  incidentId?: string;
-  attemptedEmail?: string;
-  attemptedDomain?: string;
-}
+export { AuthenticatedUser, UserProfile, AuthSecurityResult, DecodedTokenClaims };
 
 /**
  * Creates a cryptographically structured mock JWT for testing without live domain access.

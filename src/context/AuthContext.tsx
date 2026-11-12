@@ -19,43 +19,36 @@ import React, {
   useCallback 
 } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
-import { getFirebaseAuth } from '../config/firebase';
+import { getFirebaseAuth } from '../services/firebase';
 import { SECURITY_CONFIG, generateIncidentId } from '../config/securityConfig';
 import { isAllowedDomain, validateDomainAccess } from '../utils/domainValidator';
-import { TokenStorage, decodeJwtClaims, DecodedTokenClaims } from '../services/tokenService';
-import { AuthService, AuthenticatedUser, AuthSecurityResult } from '../services/authService';
+import { TokenStorage, decodeJwtClaims } from '../services/tokenService';
+import { AuthService } from '../services/authService';
+import { UserService } from '../services/userService';
 import { FirestoreService } from '../services/firestoreService';
 import { logAuditEvent } from '../utils/auditLogger';
 import { Platform } from 'react-native';
+import { 
+  UserRole,
+  AuthorizationStatus, 
+  AuthState, 
+  SecurityIncident, 
+  DecodedTokenClaims, 
+  AuthenticatedUser, 
+  UserProfile, 
+  AuthSecurityResult 
+} from '../types/auth.types';
 
-export type AuthorizationStatus = 
-  | 'IDLE' 
-  | 'CHECKING' 
-  | 'AUTHORIZED' 
-  | 'UNAUTHORIZED' 
-  | 'ERROR';
-
-// Compatible alias for components using AuthState
-export type AuthState = 
-  | 'IDLE'
-  | 'AUTHENTICATING'
-  | 'VERIFYING_DOMAIN'
-  | 'AUTHORIZED'
-  | 'ACCESS_DENIED'
-  | 'ERROR';
-
-export interface SecurityIncident {
-  incidentId: string;
-  attemptedEmail: string;
-  attemptedDomain: string;
-  errorCode: string;
-  errorMessage: string;
-  timestamp: string;
-}
-
-export interface UserProfile extends AuthenticatedUser {
-  firestoreProfile?: any;
-}
+export { 
+  UserRole,
+  AuthorizationStatus, 
+  AuthState, 
+  SecurityIncident, 
+  DecodedTokenClaims, 
+  AuthenticatedUser, 
+  UserProfile, 
+  AuthSecurityResult 
+};
 
 export interface AuthContextType {
   // Required specifications
@@ -271,7 +264,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 uid: claims.sub || 'restored_user',
                 email: claims.email,
                 displayName: claims.name || claims.email.split('@')[0],
-                photoURL: claims.picture,
+                photoURL: claims.picture || null,
                 emailVerified: Boolean(claims.email_verified),
                 domain: claims.email.split('@')[1] || 'hbplus.fit',
                 role,
