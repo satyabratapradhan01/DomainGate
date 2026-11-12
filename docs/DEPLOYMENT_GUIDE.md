@@ -193,3 +193,4 @@ Before releasing to production or presenting to evaluators, verify the following
 - [ ] **Redirects File**: `dist/_redirects` contains `/* /index.html 200`.
 - [ ] **Security Rules**: `firebase deploy --only firestore:rules` deployed to live Firebase project.
 - [ ] **Clean Secrets**: `.env` is NOT tracked in git (`git status` is clean).
+
