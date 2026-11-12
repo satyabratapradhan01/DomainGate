@@ -44,3 +44,4 @@ export const APP_CONFIG = {
 };
 
 export const SECURITY_CONFIG = APP_CONFIG;
+

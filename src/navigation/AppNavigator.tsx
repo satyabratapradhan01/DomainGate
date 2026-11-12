@@ -100,3 +100,4 @@ export const AppNavigator: React.FC = () => {
 
 // Compatible export for RootNavigator
 export const RootNavigator = AppNavigator;
+

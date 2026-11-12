@@ -69,3 +69,4 @@ googleAuthProvider.setCustomParameters({
   prompt: 'select_account',
   hd: 'hbplus.fit', // Google OAuth Hosted Domain hint
 });
+

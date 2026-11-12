@@ -34,6 +34,11 @@ yarn-error.*
 .env
 .env*.local
 
+# Secrets & Service Account Keys (Never commit to Git)
+*serviceAccount*.json
+*service-account*.json
+firebase-adminsdk*.json
+
 # typescript
 *.tsbuildinfo
 
