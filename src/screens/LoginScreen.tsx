@@ -18,7 +18,7 @@ import { SECURITY_CONFIG } from '../config/securityConfig';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
 
 export const LoginScreen: React.FC = () => {
-  const { state, errorMessage } = useAuth();
+  const { state, errorMessage, clearError } = useAuth();
   const { startGoogleSignIn } = useGoogleAuth();
   const [showTestScenarios, setShowTestScenarios] = useState(false);
 
@@ -80,6 +80,15 @@ export const LoginScreen: React.FC = () => {
               <View style={styles.errorBanner}>
                 <Ionicons name="alert-circle" size={20} color="#EF4444" style={{ marginRight: 10 }} />
                 <Text style={styles.errorText}>{errorMessage}</Text>
+                <TouchableOpacity 
+                  onPress={clearError} 
+                  activeOpacity={0.7} 
+                  style={{ padding: 4, marginLeft: 6 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss error message"
+                >
+                  <Ionicons name="close" size={16} color="#FCA5A5" />
+                </TouchableOpacity>
               </View>
             )}
 

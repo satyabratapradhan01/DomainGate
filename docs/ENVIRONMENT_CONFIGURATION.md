@@ -90,3 +90,4 @@ When building with Expo Application Services (EAS):
    eas secret:create --name EXPO_PUBLIC_FIREBASE_API_KEY --value <your_key> --type string
    ```
 2. Or configure them within `eas.json` under your build profile `env` block for non-sensitive public configuration.
+

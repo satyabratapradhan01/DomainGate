@@ -22,11 +22,12 @@ import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } 
 import { getFirebaseAuth } from '../services/firebase';
 import { SECURITY_CONFIG, generateIncidentId } from '../config/securityConfig';
 import { isAllowedDomain, validateDomainAccess } from '../utils/domainValidator';
-import { TokenStorage, decodeJwtClaims } from '../services/tokenService';
+import { TokenStorage, decodeJwtClaims, isTokenExpired } from '../services/tokenService';
 import { AuthService } from '../services/authService';
 import { UserService } from '../services/userService';
 import { FirestoreService } from '../services/firestoreService';
 import { logAuditEvent } from '../utils/auditLogger';
+import { sanitizeAuthError } from '../utils/errorHandler';
 import { Platform } from 'react-native';
 import { 
   UserRole,
@@ -231,7 +232,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthorizationStatus('AUTHORIZED');
     } catch (err: any) {
       console.error('[AuthContext] Error validating onAuthStateChanged user:', err);
-      setErrorMessage(err.message || 'Authentication authorization failed.');
+      const sanitized = sanitizeAuthError(err);
+      setErrorMessage(sanitized.userMessage);
       setAuthorizationStatus('ERROR');
     } finally {
       setIsLoading(false);
@@ -258,6 +260,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const cachedToken = await TokenStorage.getToken();
           if (cachedToken) {
             const claims = decodeJwtClaims(cachedToken);
+            if (claims && isTokenExpired(claims)) {
+              await TokenStorage.clearToken();
+              const sanitized = sanitizeAuthError({ code: 'session_expired' });
+              setErrorMessage(sanitized.userMessage);
+              setAuthorizationStatus('IDLE');
+              setIsInitializing(false);
+              setIsLoading(false);
+              return;
+            }
             if (claims && claims.email && isAllowedDomain(claims.email) && claims.email_verified) {
               const role: 'ADMIN' | 'USER' = (claims.email.startsWith('satya') || claims.role === 'ADMIN' || claims.role === 'admin') ? 'ADMIN' : 'USER';
               const restoredProfile: UserProfile = {
@@ -340,7 +351,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await AuthService.signInWithGoogleLive();
       handleSecurityResult(result);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Login failed.');
+      const sanitized = sanitizeAuthError(err);
+      setErrorMessage(sanitized.userMessage);
       setAuthorizationStatus('ERROR');
       setIsLoading(false);
     }
@@ -428,7 +440,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setAuthError = (error: string) => {
     setIsLoading(false);
-    setErrorMessage(error);
+    const sanitized = sanitizeAuthError(error);
+    setErrorMessage(sanitized.userMessage);
     setAuthorizationStatus('ERROR');
   };
 

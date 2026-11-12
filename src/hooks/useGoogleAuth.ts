@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { AuthService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import { sanitizeAuthError } from '../utils/errorHandler';
 
 // Ensure redirect auth session closes cleanly in web/popup contexts
 WebBrowser.maybeCompleteAuthSession();
@@ -36,12 +37,15 @@ export function useGoogleAuth() {
           const result = await AuthService.exchangeGoogleIdTokenAndAuthorize(idToken);
           handleSecurityResult(result);
         } catch (err: any) {
-          setAuthError(err.message || 'Failed to exchange Google credential.');
+          const sanitized = sanitizeAuthError(err);
+          setAuthError(sanitized.userMessage);
         }
       } else if (response.type === 'cancel' || response.type === 'dismiss') {
-        setAuthError('Sign-in cancelled. The Google authentication window was dismissed.');
+        const sanitized = sanitizeAuthError({ code: 'auth_cancelled' });
+        setAuthError(sanitized.userMessage);
       } else if (response.type === 'error') {
-        setAuthError(response.error?.message || 'Google OAuth request failed.');
+        const sanitized = sanitizeAuthError(response.error);
+        setAuthError(sanitized.userMessage);
       }
     }
 
@@ -60,19 +64,21 @@ export function useGoogleAuth() {
         const result = await AuthService.signInWithGoogleWeb();
         handleSecurityResult(result);
       } catch (err: any) {
-        setAuthError(err.message || 'Google Web authentication failed.');
+        const sanitized = sanitizeAuthError(err);
+        setAuthError(sanitized.userMessage);
       }
     } else {
       // Mobile native trigger via expo-auth-session
       if (!request) {
-        setAuthError('Google Sign-In request is not ready yet. Please try again.');
+        setAuthError('Google Sign-In service is initializing. Please tap again in a moment.');
         return;
       }
       setAuthBusy(true);
       try {
         await promptAsync();
       } catch (err: any) {
-        setAuthError(err.message || 'Could not launch Google Sign-In prompt.');
+        const sanitized = sanitizeAuthError(err);
+        setAuthError(sanitized.userMessage);
       }
     }
   };

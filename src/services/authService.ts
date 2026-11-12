@@ -11,6 +11,7 @@ import { SECURITY_CONFIG, validateDomain, generateIncidentId } from '../config/s
 import { TokenStorage } from './tokenService';
 import { logAuditEvent } from '../utils/auditLogger';
 import { base64UrlEncode } from '../utils/base64';
+import { sanitizeAuthError } from '../utils/errorHandler';
 import { 
   AuthenticatedUser, 
   UserProfile, 
@@ -195,48 +196,12 @@ export const AuthService = {
     } catch (err: any) {
       console.warn('[AuthService] Google Web Sign-In error:', err);
       const incidentId = generateIncidentId();
-
-      // Explicit error mapping for browser popup scenarios
-      if (err.code === 'auth/popup-closed-by-user') {
-        return {
-          success: false,
-          errorCode: 'POPUP_CLOSED_BY_USER',
-          errorMessage: 'Sign-in cancelled: The Google authentication popup was closed before completing login.',
-          incidentId,
-        };
-      }
-
-      if (err.code === 'auth/popup-blocked') {
-        return {
-          success: false,
-          errorCode: 'POPUP_BLOCKED_BY_BROWSER',
-          errorMessage: 'Sign-in failed: The authentication popup was blocked by your browser. Please allow popups for this site and try again.',
-          incidentId,
-        };
-      }
-
-      if (err.code === 'auth/cancelled-popup-request') {
-        return {
-          success: false,
-          errorCode: 'POPUP_REQUEST_CANCELLED',
-          errorMessage: 'An authentication popup is already open. Please complete or close the open Google window.',
-          incidentId,
-        };
-      }
-
-      if (err.code === 'auth/blocking-cloud-function-error' || err.message?.includes('permission-denied')) {
-        return {
-          success: false,
-          errorCode: SECURITY_CONFIG.ERROR_CODES.BLOCKING_RULE_REJECTION,
-          errorMessage: 'Access restricted: Firebase Cloud Identity blocking function rejected unauthorized domain.',
-          incidentId,
-        };
-      }
+      const sanitized = sanitizeAuthError(err);
 
       return {
         success: false,
-        errorCode: err.code || 'AUTH_FAILURE',
-        errorMessage: err.message || 'Google authentication encountered an unexpected error.',
+        errorCode: sanitized.code,
+        errorMessage: sanitized.userMessage,
         incidentId,
       };
     }
@@ -273,20 +238,12 @@ export const AuthService = {
     } catch (err: any) {
       console.warn('[AuthService] Mobile credential exchange error:', err);
       const incidentId = generateIncidentId();
-
-      if (err.code === 'auth/blocking-cloud-function-error' || err.message?.includes('permission-denied')) {
-        return {
-          success: false,
-          errorCode: SECURITY_CONFIG.ERROR_CODES.BLOCKING_RULE_REJECTION,
-          errorMessage: 'Access restricted: Firebase Cloud Identity blocking function rejected unauthorized domain.',
-          incidentId,
-        };
-      }
+      const sanitized = sanitizeAuthError(err);
 
       return {
         success: false,
-        errorCode: err.code || 'CREDENTIAL_EXCHANGE_FAILURE',
-        errorMessage: err.message || 'Failed to authenticate Google credential with Firebase.',
+        errorCode: sanitized.code,
+        errorMessage: sanitized.userMessage,
         incidentId,
       };
     }
