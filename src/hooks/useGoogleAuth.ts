@@ -3,53 +3,49 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { AuthService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { sanitizeAuthError } from '../utils/errorHandler';
 
-// Ensure WebBrowser session finishes cleanly on Web & iOS AuthSession flows
+// Ensure redirect auth session closes cleanly in web/popup/browser contexts
 WebBrowser.maybeCompleteAuthSession();
-
-// Configure GoogleSignin for Android / native environments
-const webClientId =
-  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB ||
-  '';
-
-if (Platform.OS === 'android') {
-  try {
-    GoogleSignin.configure({
-      webClientId: webClientId || undefined,
-      offlineAccess: false,
-    });
-  } catch (e) {
-    console.warn('[GoogleSignin] configure warning:', e);
-  }
-}
 
 export function useGoogleAuth() {
   const { handleSecurityResult, setAuthBusy, setAuthError } = useAuth();
 
-  // ---------------------------------------------------------------------------
-  // iOS Fallback: expo-auth-session
-  // (Maintained for iOS compatibility when running outside native Google SDK)
-  // ---------------------------------------------------------------------------
+  // The Web Client ID from Google Cloud Console / Firebase
+  const webClientId =
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB ||
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+    '';
+
+  // In Expo Go, the auth session redirects back to Expo's auth proxy (https://auth.expo.io/@...)
+  // or to the local scheme (domaingate://).
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: 'domaingate',
   });
 
+  if (Platform.OS !== 'web') {
+    console.log(`[DomainGate] Google Auth redirectUri (${Platform.OS}):`, redirectUri);
+  }
+
+  // CRITICAL FOR EXPO GO:
+  // In Expo Go, Google rejects 'androidClientId' because Android Client IDs in Google Cloud
+  // only validate native apps with SHA-1 signatures and do not allow HTTP redirect URIs.
+  // Expo's official documentation requires passing the Web Client ID ('clientId' / 'webClientId')
+  // for both Android and iOS when running in Expo Go.
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: webClientId,
     webClientId: webClientId,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+    // Do NOT pass androidClientId or iosClientId in Expo Go, as that triggers native package checks
+    // which fail with Error 400: redirect_uri_mismatch or invalid_request under GeneralOAuthFlow.
     redirectUri,
     selectAccount: true,
   });
 
-  // Handle iOS AuthSession response
+  // Handle mobile (Android & iOS) OAuth redirect response
   useEffect(() => {
-    async function processIosResponse() {
+    async function processMobileResponse() {
       if (!response) return;
 
       if (response.type === 'success') {
@@ -66,65 +62,30 @@ export function useGoogleAuth() {
         } catch (err: any) {
           const sanitized = sanitizeAuthError(err);
           setAuthError(sanitized.userMessage);
+        } finally {
+          setAuthBusy(false);
         }
       } else if (response.type === 'cancel' || response.type === 'dismiss') {
         const sanitized = sanitizeAuthError({ code: 'auth_cancelled' });
         setAuthError(sanitized.userMessage);
       } else if (response.type === 'error') {
+        console.warn('[DomainGate] Google Auth Error response:', response.error);
         const sanitized = sanitizeAuthError(response.error);
         setAuthError(sanitized.userMessage);
       }
     }
 
-    if (Platform.OS === 'ios') {
-      processIosResponse();
+    if (Platform.OS !== 'web') {
+      processMobileResponse();
     }
   }, [response]);
 
-  // ---------------------------------------------------------------------------
-  // Android Native Implementation: @react-native-google-signin/google-signin
-  // ---------------------------------------------------------------------------
-  const signInWithGoogleAndroid = async () => {
-    setAuthBusy(true);
-    try {
-      // 1. Verify Google Play Services availability
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-
-      // 2. Perform native sign in
-      const response = await GoogleSignin.signIn();
-
-      // Check if user cancelled
-      if (response.type === 'cancelled') {
-        const sanitized = sanitizeAuthError({ code: 'auth_cancelled' });
-        setAuthError(sanitized.userMessage);
-        return;
-      }
-
-      // In @react-native-google-signin/google-signin v17:
-      // response is SignInResponse (type: 'success', data: { idToken, user, ... })
-      const idToken = response.data?.idToken;
-      if (!idToken) {
-        throw new Error('Google ID token not received from native Google Sign-In');
-      }
-
-      // 3. Exchange ID token with Firebase and enforce DomainGate boundary
-      const result = await AuthService.exchangeGoogleIdTokenAndAuthorize(idToken);
-      handleSecurityResult(result);
-    } catch (error: any) {
-      console.error('[GoogleSignin Android] Error:', error);
-      const sanitized = sanitizeAuthError(error);
-      setAuthError(sanitized.userMessage);
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Unified Sign-In Trigger across Web, Android, and iOS
-  // ---------------------------------------------------------------------------
+  /**
+   * Unified trigger across Web, Android, and iOS
+   */
   const startGoogleSignIn = async () => {
     if (Platform.OS === 'web') {
-      // 1. Web: Firebase signInWithPopup()
+      // Web: Direct Firebase signInWithPopup()
       setAuthBusy(true);
       try {
         const result = await AuthService.signInWithGoogleWeb();
@@ -135,13 +96,10 @@ export function useGoogleAuth() {
       } finally {
         setAuthBusy(false);
       }
-    } else if (Platform.OS === 'android') {
-      // 2. Android: Native GoogleSignin
-      await signInWithGoogleAndroid();
     } else {
-      // 3. iOS: expo-auth-session prompt
+      // Mobile (Android / iOS): Expo AuthSession browser flow
       if (!request) {
-        setAuthError('Google Sign-In service is initializing. Please tap again in a moment.');
+        setAuthError('Google Sign-In is initializing. Please tap again in a moment.');
         return;
       }
       setAuthBusy(true);
@@ -158,7 +116,7 @@ export function useGoogleAuth() {
 
   return {
     startGoogleSignIn,
-    signInWithGoogleAndroid,
-    isReady: Platform.OS === 'web' || Platform.OS === 'android' || Boolean(request),
+    isReady: Boolean(request) || Platform.OS === 'web',
+    redirectUri,
   };
 }
