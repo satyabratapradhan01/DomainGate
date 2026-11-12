@@ -103,10 +103,18 @@ export function sanitizeAuthError(error: any): SanitizedError {
     };
   }
 
-  // 5. Invalid OAuth Configuration
+  // 5. Google Sign-In Provider Not Enabled in Firebase Console
+  if (rawCode.includes('configuration-not-found')) {
+    return {
+      code: 'INVALID_OAUTH_CONFIG',
+      userMessage: 'Google Sign-In is not enabled yet in Firebase Console. Please go to Firebase Console > Authentication > Sign-in method and enable "Google".',
+      isRecoverable: false,
+    };
+  }
+
+  // 6. Invalid OAuth Configuration
   if (
     rawCode.includes('invalid-api-key') ||
-    rawCode.includes('configuration-not-found') ||
     rawCode.includes('unauthorized-domain') || // Firebase Auth domain whitelist
     rawCode.includes('operation-not-allowed') ||
     rawCode.includes('invalid-app-credential') ||

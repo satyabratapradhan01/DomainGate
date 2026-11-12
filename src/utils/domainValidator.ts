@@ -9,7 +9,7 @@
  * Centralized policy: Defined in src/config/securityConfig.ts
  */
 
-import { SECURITY_CONFIG } from '../config/securityConfig';
+import { SECURITY_CONFIG } from '../constants/config';
 
 export interface DomainValidationResult {
   isValid: boolean;
