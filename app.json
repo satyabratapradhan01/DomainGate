@@ -3,6 +3,7 @@
     "name": "DomainGate",
     "slug": "DomainGate",
     "scheme": "domaingate",
+    "owner": "satyabratapradhann",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

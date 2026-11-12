@@ -19,26 +19,27 @@ export function useGoogleAuth() {
     process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
     '';
 
-  // In Expo Go, the auth session redirects back to Expo's auth proxy (https://auth.expo.io/@...)
-  // or to the local scheme (domaingate://).
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'domaingate',
+  // For Expo Go on Android / iOS:
+  // Google's OAuth 2.0 policy requires valid HTTPS or standard redirect URIs.
+  // In Expo Go, passing native custom schemes like `domaingate://` to a Web Client ID
+  // triggers: "Error 400: invalid_request" (doesn't comply with Google's OAuth 2.0 policy).
+  // The official Expo Go redirect URI is the AuthSession proxy:
+  // https://auth.expo.io/@satyabratapradhann/DomainGate
+  const proxyRedirectUri = 'https://auth.expo.io/@satyabratapradhann/DomainGate';
+
+  const redirectUri = Platform.select({
+    web: AuthSession.makeRedirectUri(),
+    default: proxyRedirectUri,
   });
 
   if (Platform.OS !== 'web') {
     console.log(`[DomainGate] Google Auth redirectUri (${Platform.OS}):`, redirectUri);
   }
 
-  // CRITICAL FOR EXPO GO:
-  // In Expo Go, Google rejects 'androidClientId' because Android Client IDs in Google Cloud
-  // only validate native apps with SHA-1 signatures and do not allow HTTP redirect URIs.
-  // Expo's official documentation requires passing the Web Client ID ('clientId' / 'webClientId')
-  // for both Android and iOS when running in Expo Go.
+  // Google ID token request using the Web Client ID and the Expo Auth proxy redirect URI
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: webClientId,
     webClientId: webClientId,
-    // Do NOT pass androidClientId or iosClientId in Expo Go, as that triggers native package checks
-    // which fail with Error 400: redirect_uri_mismatch or invalid_request under GeneralOAuthFlow.
     redirectUri,
     selectAccount: true,
   });
