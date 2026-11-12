@@ -20,16 +20,10 @@ export function useGoogleAuth() {
     '';
 
   // For Expo Go on Android / iOS:
-  // Google's OAuth 2.0 policy requires valid HTTPS or standard redirect URIs.
-  // In Expo Go, passing native custom schemes like `domaingate://` to a Web Client ID
-  // triggers: "Error 400: invalid_request" (doesn't comply with Google's OAuth 2.0 policy).
-  // The official Expo Go redirect URI is the AuthSession proxy:
-  // https://auth.expo.io/@satyabratapradhann/DomainGate
-  const proxyRedirectUri = 'https://auth.expo.io/@satyabratapradhann/DomainGate';
-
+  // We use the registered proxy URL for the satyabratapradhann account.
   const redirectUri = Platform.select({
     web: AuthSession.makeRedirectUri(),
-    default: proxyRedirectUri,
+    default: 'https://auth.expo.io/@satyabratapradhann/DomainGate',
   });
 
   if (Platform.OS !== 'web') {
