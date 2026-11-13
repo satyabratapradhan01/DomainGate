@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DomainGate - Enterprise Security & Architecture Submission Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        color: #64748B;
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0F172A;
+      background-color: #FFFFFF;
+      line-height: 1.55;
+      font-size: 10pt;
+      margin: 0;
+      padding: 0;
+    }
+    h1, h2, h3, h4 {
+      color: #0F172A;
+      font-weight: 700;
+      margin-top: 18pt;
+      margin-bottom: 6pt;
+    }
+    h1 {
+      font-size: 20pt;
+      color: #1E3A8A;
+      border-bottom: 2.5px solid #2563EB;
+      padding-bottom: 6px;
+      margin-top: 0;
+    }
+    h2 {
+      font-size: 13pt;
+      color: #1E40AF;
+      border-bottom: 1px solid #E2E8F0;
+      padding-bottom: 4px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 11pt;
+      color: #334155;
+      margin-top: 12pt;
+    }
+    p {
+      margin-top: 0;
+      margin-bottom: 8pt;
+      color: #334155;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 8pt;
+      font-weight: 600;
+      border-radius: 4px;
+      background-color: #EFF6FF;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+    }
+    .badge-success {
+      background-color: #ECFDF5;
+      color: #047857;
+      border: 1px solid #A7F3D0;
+    }
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14pt;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+    }
+    .header-table td {
+      padding: 8px 12px;
+      font-size: 9pt;
+      vertical-align: top;
+    }
+    .header-table td strong {
+      color: #1E293B;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10pt 0;
+      font-size: 9pt;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid #CBD5E1;
+      padding: 6px 9px;
+      text-align: left;
+    }
+    table.data-table th {
+      background-color: #F1F5F9;
+      color: #1E293B;
+      font-weight: 600;
+    }
+    pre, code {
+      font-family: "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 8.5pt;
+      background-color: #F8FAFC;
+      color: #0F172A;
+    }
+    pre {
+      padding: 10px 12px;
+      border-radius: 5px;
+      border: 1px solid #E2E8F0;
+      overflow-x: auto;
+      line-height: 1.4;
+      margin: 8pt 0;
+    }
+    code {
+      padding: 1px 4px;
+      border-radius: 3px;
+      background-color: #F1F5F9;
+      border: 1px solid #E2E8F0;
+    }
+    .callout {
+      border-left: 4px solid #2563EB;
+      background-color: #F8FAFC;
+      padding: 8px 12px;
+      margin: 10pt 0;
+      border-radius: 0 5px 5px 0;
+    }
+    .callout-title {
+      font-weight: bold;
+      color: #1E40AF;
+      margin-bottom: 4px;
+    }
+    .checklist {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    .checklist li {
+      padding: 4px 0;
+      position: relative;
+      padding-left: 22px;
+    }
+    .checklist li::before {
+      content: "✔";
+      position: absolute;
+      left: 0;
+      color: #059669;
+      font-weight: bold;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🛡️ DomainGate — Project Submission & Architecture Report</h1>
+  <p><strong>Enterprise Zero-Trust Identity & Domain Access Management System</strong></p>
+
+  <table class="header-table">
+    <tr>
+      <td><strong>Candidate / Author:</strong> Satyabrata Pradhan</td>
+      <td><strong>Target Domain:</strong> <code>@hbplus.fit</code></td>
+    </tr>
+    <tr>
+      <td><strong>Live Production App:</strong> <a href="https://domaingate.vercel.app">https://domaingate.vercel.app</a></td>
+      <td><strong>Framework / SDK:</strong> React Native 0.88 • Expo SDK 58</td>
+    </tr>
+    <tr>
+      <td><strong>GitHub Repository:</strong> <a href="https://github.com/satyabratapradhan01/DomainGate">github.com/satyabratapradhan01/DomainGate</a></td>
+      <td><strong>Cloud Backend:</strong> Firebase Authentication & Cloud Firestore</td>
+    </tr>
+    <tr>
+      <td><strong>Submission Date:</strong> November 2026</td>
+      <td><strong>Test Suite Status:</strong> <span class="badge badge-success">26/26 Tests Passed (100%)</span></td>
+    </tr>
+  </table>
+
+  <h2>1. Executive Summary</h2>
+  <p>
+    <strong>DomainGate</strong> is an enterprise cross-platform Zero-Trust Identity and Access Management (IAM) application engineered to enforce strict, cryptographically validated corporate access boundaries.
+  </p>
+  <p>
+    The core security mission of DomainGate is <strong>exact domain-based authorization</strong>: only users authenticated through Google OAuth whose verified corporate email strictly ends with <strong><code>@hbplus.fit</code></strong> are granted entry into the internal dashboard. Any unauthorized domains (such as <code>@gmail.com</code>, <code>@yahoo.com</code>, or spoofed subdomains like <code>user@sub.hbplus.fit</code>) are immediately quarantined, purged from memory, and rejected at both the application router and Cloud Firestore database levels.
+  </p>
+
+  <h2>2. Key Architecture & End-to-End Authentication Flow</h2>
+  <div class="callout">
+    <div class="callout-title">Zero-Trust Authentication Boundary</div>
+    DomainGate never trusts frontend state alone. Every session is backed by an OpenID Connect (OIDC) ID token verified with Google and Firebase Authentication, reinforced by server-side Cloud Firestore security rules.
+  </div>
+
+  <pre>
+                                [ User Access Request ]
+                                           │
+                             ┌─────────────┴─────────────┐
+                             ▼                           ▼
+                        [ Web Browser ]             [ Mobile App ]
+                     Firebase signInWithPopup     Expo AuthSession Flow
+                             │                           │
+                             └─────────────┬─────────────┘
+                                           ▼
+                            [ Google Identity Platform ]
+                                           │
+                           Decoded Claims & OIDC ID Token
+                             (email, email_verified, hd)
+                                           │
+                                           ▼
+                       [ DomainGate Zero-Trust Boundary ]
+                                           │
+                 ┌─────────────────────────┴─────────────────────────┐
+                 ▼                                                   ▼
+       Email != @hbplus.fit                                 Email == @hbplus.fit
+                 │                                                   │
+     ❌ EMERGENCY PURGE & AUDIT                           ✅ AUTHORIZED ENROLLMENT
+     • Immediate Firebase sign-out                        • Cryptographic token saved
+     • SecureStorage wiped                                • Cloud Firestore profile sync
+     • Incident ID & telemetry generated                  • RBAC: USER or ADMIN stamped
+     • Quarantined at AccessDeniedScreen                  • Direct mount into Protected Dashboard
+  </pre>
+
+  <h2>3. Technical Highlights & Enterprise Capabilities</h2>
+  <ul class="checklist">
+    <li><strong>Multi-Platform OAuth Orchestration:</strong> Seamless Google authentication across Web (Firebase <code>signInWithPopup</code>) and Mobile Android/iOS (Expo AuthSession OIDC PKCE flow).</li>
+    <li><strong>Defense-in-Depth Domain Enforcement:</strong> Strict regex validation rejecting consumer webmails, foreign corporate domains, subdomain spoofing (<code>attacker@sub.hbplus.fit</code>), and suffix spoofing (<code>malicious@hbplus.fit.evil.com</code>).</li>
+    <li><strong>Cloud Firestore Database-Level Rules:</strong> Backend security rules reject all read and write queries from non-<code>@hbplus.fit</code> tokens; prevents self-escalation of roles.</li>
+    <li><strong>Flicker-Free Session Persistence:</strong> Secure token storage via <code>AsyncStorage</code> and <code>expo-secure-store</code> with expiration validation on app reload.</li>
+    <li><strong>Immediate Emergency Purge:</strong> Zero-delay session teardown on authorization failure—unauthorized tokens or cookies never linger in storage.</li>
+    <li><strong>Built-In Evaluator Sandbox Test Rig:</strong> An interactive test harness built directly into the Login screen allows evaluators without an <code>@hbplus.fit</code> inbox to test authorized, unauthorized, and unverified scenarios with cryptographic simulation.</li>
+  </ul>
+
+  <div class="page-break"></div>
+
+  <h2>4. Automated Test Suite Verification (26/26 Passed)</h2>
+  <p>All mandatory requirements have been systematically verified via the automated test suite (<code>npm test</code>):</p>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Test Scenario</th>
+        <th style="width: 45%;">Verification Scope</th>
+        <th style="width: 30%;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Test 1: Authorized User</strong></td>
+        <td>Login with <code>@hbplus.fit</code>, verify email verification check, token decode, and dashboard profile access.</td>
+        <td><span class="badge badge-success">6/6 Assertions Passed</span></td>
+      </tr>
+      <tr>
+        <td><strong>Test 2: Unauthorized User</strong></td>
+        <td>Login with Gmail, Yahoo, subdomains; verify immediate Firebase sign-out and exact error message: <em>"Access restricted. Please login using your official domain email."</em></td>
+        <td><span class="badge badge-success">7/7 Assertions Passed</span></td>
+      </tr>
+      <tr>
+        <td><strong>Test 3: Protected Routes</strong></td>
+        <td>Direct URL to <code>/dashboard</code> without token; router redirects unauthenticated requests to <code>/login</code>.</td>
+        <td><span class="badge badge-success">2/2 Assertions Passed</span></td>
+      </tr>
+      <tr>
+        <td><strong>Test 4: Session Persistence</strong></td>
+        <td>Restore session from storage after refresh without state flicker; detect expired token and trigger automatic eviction.</td>
+        <td><span class="badge badge-success">4/4 Assertions Passed</span></td>
+      </tr>
+      <tr>
+        <td><strong>Test 5: Logout & Sanitization</strong></td>
+        <td>Wipe storage upon logout; replace browser history with <code>/login</code> to neutralize Back-button re-entry.</td>
+        <td><span class="badge badge-success">4/4 Assertions Passed</span></td>
+      </tr>
+      <tr>
+        <td><strong>Test 6: Database Security</strong></td>
+        <td>Verify Firestore rules reject cross-user profile access and reject role escalation attempts.</td>
+        <td><span class="badge badge-success">3/3 Assertions Passed</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5. Engineering Lessons & Takeaways</h2>
+  <h3>A. Cross-Platform OAuth Discrepancies (Web vs. Android Expo Go)</h3>
+  <p>
+    Developing OAuth for both Web and Mobile highlighted the fundamental difference between browser popup windows and mobile deep-link proxies:
+  </p>
+  <ul>
+    <li>Google Cloud Console creates two distinct OAuth client types: <strong>Web Application</strong> and <strong>Android Application</strong>.</li>
+    <li>An <strong>Android Client ID</strong> in Google Cloud validates native APKs via package name (<code>com.domaingate.auth</code>) and SHA-1 certificate fingerprint, and <strong>does not accept HTTP redirect URIs</strong>.</li>
+    <li>In <strong>Expo Go</strong>, Google Sign-In is executed via an in-app browser using the <code>auth.expo.io</code> proxy. Therefore, Expo Go must utilize the <strong>Web Client ID</strong> with the authorized proxy redirect URI (<code>https://auth.expo.io/@satyabratapradhann/DomainGate</code>) to avoid <code>Error 400: redirect_uri_mismatch</code>.</li>
+  </ul>
+
+  <h3>B. True Zero-Trust Implementation</h3>
+  <p>
+    In real-world enterprise architectures, client-side validation is merely a UX convenience. True gating requires synchronized client boundary evaluation, backend database rules, and automatic session purging on any anomaly. DomainGate achieves defense-in-depth across the client UI, OAuth provider claims, and Firestore security rules.
+  </p>
+
+  <h2>6. Deliverables & Reference Links</h2>
+  <table class="data-table">
+    <tr>
+      <td><strong>Live Production App</strong></td>
+      <td><a href="https://domaingate.vercel.app">https://domaingate.vercel.app</a></td>
+    </tr>
+    <tr>
+      <td><strong>GitHub Repository</strong></td>
+      <td><a href="https://github.com/satyabratapradhan01/DomainGate">https://github.com/satyabratapradhan01/DomainGate</a></td>
+    </tr>
+    <tr>
+      <td><strong>Production Hosting</strong></td>
+      <td>Vercel (Single Page Application with rewrites to <code>/index.html</code>)</td>
+    </tr>
+    <tr>
+      <td><strong>Firebase Project</strong></td>
+      <td><code>domaingate-7b979</code> (Auth Domain: <code>domaingate-7b979.firebaseapp.com</code>)</td>
+    </tr>
+    <tr>
+      <td><strong>Authorized Domain</strong></td>
+      <td>Strictly <code>hbplus.fit</code> (HBPlus Health & Fitness Global Inc.)</td>
+    </tr>
+  </table>
+
+</body>
+</html>
