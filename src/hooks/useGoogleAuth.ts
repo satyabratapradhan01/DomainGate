@@ -3,7 +3,6 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
-import { ResponseType } from 'expo-auth-session';
 import { AuthService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { sanitizeAuthError } from '../utils/errorHandler';
@@ -19,22 +18,20 @@ export function useGoogleAuth() {
     process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
     '';
 
-  const redirectUri = Platform.select({
-    web: AuthSession.makeRedirectUri(),
-    default: 'https://auth.expo.io/@satyabratapradhann/DomainGate',
+  // In Expo Go, makeRedirectUri() automatically crafts the exact return URI
+  // needed for your current runtime session (local exp:// link or proxy URL)
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'domaingate',
   });
 
   if (Platform.OS !== 'web') {
     console.log(`[DomainGate] Google Auth redirectUri (${Platform.OS}):`, redirectUri);
   }
 
-  // Explicitly configure responseType: ResponseType.IdToken for proxy flow
-  // In Expo Go with auth.expo.io proxy, requesting responseType="id_token" allows Google
-  // to deliver the id_token in the URL hash, which auth.expo.io sends directly to the app.
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  // Use Google.useIdTokenAuthRequest with the Web Client ID
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: webClientId,
     webClientId: webClientId,
-    responseType: ResponseType.IdToken,
     redirectUri,
     selectAccount: true,
   });
@@ -43,6 +40,8 @@ export function useGoogleAuth() {
   useEffect(() => {
     async function processMobileResponse() {
       if (!response) return;
+
+      console.log('[DomainGate] AuthSession response received:', response.type);
 
       if (response.type === 'success') {
         const idToken = response.params?.id_token;
