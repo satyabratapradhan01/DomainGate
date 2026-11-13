@@ -7,8 +7,8 @@
 
 export const APP_CONFIG = {
   APP_NAME: 'DomainGate',
-  ORGANIZATION_NAME: 'HBPlus Health & Fitness Global Inc.',
-  ALLOWED_DOMAIN: 'hbplus.fit',
+  ORGANIZATION_NAME: process.env.EXPO_PUBLIC_ORGANIZATION_NAME || 'HBPlus Health & Fitness Global Inc.',
+  ALLOWED_DOMAIN: (process.env.EXPO_PUBLIC_ALLOWED_DOMAIN || 'hbplus.fit').trim().toLowerCase(),
   DEFAULT_ROLE: 'USER' as const,
   PORTAL_SUBTITLE: 'Authorized Internal Corporate Workspace',
   
