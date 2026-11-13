@@ -18,10 +18,13 @@ export function useGoogleAuth() {
     process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
     '';
 
-  // In Expo Go, makeRedirectUri() automatically crafts the exact return URI
-  // needed for your current runtime session (local exp:// link or proxy URL)
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'domaingate',
+  // For Expo Go on Android / iOS:
+  // Must use the registered HTTPS proxy redirect URI that complies with Google OAuth 2.0 policy:
+  const proxyRedirectUri = 'https://auth.expo.io/@satyabratapradhann/DomainGate';
+
+  const redirectUri = Platform.select({
+    web: AuthSession.makeRedirectUri(),
+    default: proxyRedirectUri,
   });
 
   if (Platform.OS !== 'web') {
@@ -99,6 +102,7 @@ export function useGoogleAuth() {
       }
       setAuthBusy(true);
       try {
+        // In Expo Go, passing { showInRecents: true } ensures the browser returns to the foreground app
         await promptAsync();
       } catch (err: any) {
         const sanitized = sanitizeAuthError(err);
